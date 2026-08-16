@@ -1,5 +1,4 @@
 import { signIn } from './actions';
-import BootstrapButton from './BootstrapButton';
 
 export default function LoginPage({
   searchParams,
@@ -41,10 +40,6 @@ export default function LoginPage({
             Sign in
           </button>
         </form>
-
-        <div className="mt-4 border-t border-ink/10 pt-4">
-          <BootstrapButton />
-        </div>
       </div>
     </main>
   );
