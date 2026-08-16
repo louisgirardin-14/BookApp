@@ -176,8 +176,13 @@ export async function renderExportCanvas(
     return;
   }
 
+  // The spines layout prefers a real spine photo over squishing the
+  // front cover art, when one has been added for that book.
   const images = await Promise.all(
-    books.map((b) => loadImage(proxied(b.cover_url)).catch(() => null))
+    books.map((b) => {
+      const sourceUrl = opts.layout === 'spines' && b.spine_url ? b.spine_url : b.cover_url;
+      return loadImage(proxied(sourceUrl)).catch(() => null);
+    })
   );
   const valid = books.map((b, i) => ({ book: b, img: images[i] })).filter((x) => x.img);
 

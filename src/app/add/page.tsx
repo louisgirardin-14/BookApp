@@ -2,13 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { CoverCandidate, CoverSource } from '@/lib/types';
+import type { CoverSource } from '@/lib/types';
 import StarRating from '@/components/StarRating';
-import CameraCapture from '@/components/CameraCapture';
-import AutoCropStage from '@/components/AutoCropStage';
-import { addBook, uploadCoverImage } from '@/app/actions';
-
-type Flow = 'idle' | 'camera' | 'crop';
+import CoverPicker, { type CoverPickResult } from '@/components/CoverPicker';
+import { addBook, mirrorCoverImage, uploadCoverImage } from '@/app/actions';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -16,14 +13,6 @@ function todayISO() {
 
 export default function AddBookPage() {
   const router = useRouter();
-
-  const [query, setQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<CoverCandidate[]>([]);
-  const [searchError, setSearchError] = useState<string | null>(null);
-
-  const [flow, setFlow] = useState<Flow>('idle');
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverSource, setCoverSource] = useState<CoverSource | null>(null);
@@ -40,41 +29,17 @@ export default function AddBookPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  async function search(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setSearching(true);
-    setSearchError(null);
-    try {
-      const res = await fetch(`/api/search-covers?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      setResults(data.results ?? []);
-      if (!data.results?.length) {
-        setSearchError('No covers found. You can take a photo instead.');
-      }
-    } catch {
-      setSearchError('Search failed. Try again.');
-    } finally {
-      setSearching(false);
+  function onCoverSelected(result: CoverPickResult) {
+    setCoverUrl(result.url);
+    setCoverSource(result.source);
+    if (result.source === 'api') {
+      setForm((f) => ({
+        ...f,
+        title: result.title ?? f.title,
+        author: result.author ?? f.author,
+        isbn: result.isbn ?? f.isbn,
+      }));
     }
-  }
-
-  function pickCandidate(candidate: CoverCandidate) {
-    setCoverUrl(candidate.coverUrl);
-    setCoverSource('api');
-    setForm((f) => ({
-      ...f,
-      title: candidate.title,
-      author: candidate.author,
-      isbn: candidate.isbn ?? f.isbn,
-    }));
-  }
-
-  function onCropConfirmed(dataUrl: string) {
-    setCoverUrl(dataUrl);
-    setCoverSource('self-uploaded');
-    setFlow('idle');
-    setCapturedImage(null);
   }
 
   async function save() {
@@ -86,16 +51,20 @@ export default function AddBookPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      let finalCoverUrl = coverUrl;
-      if (coverSource === 'self-uploaded') {
-        finalCoverUrl = await uploadCoverImage(coverUrl, form.title);
-      }
+      // Whatever the source, end up with our own Supabase Storage URL so
+      // the book no longer depends on a third-party CDN staying up.
+      const finalCoverUrl =
+        coverSource === 'self-uploaded'
+          ? await uploadCoverImage(coverUrl, form.title)
+          : await mirrorCoverImage(coverUrl, form.title);
+
       const id = await addBook({
         title: form.title.trim(),
         author: form.author.trim(),
         isbn: form.isbn.trim() || null,
         cover_url: finalCoverUrl,
         cover_source: coverSource,
+        spine_url: null,
         date_read: form.date_read,
         rating: form.rating,
         notes: form.notes.trim() || null,
@@ -112,78 +81,7 @@ export default function AddBookPage() {
     <div className="mx-auto max-w-2xl space-y-8">
       <h1 className="text-2xl font-semibold">Add a book</h1>
 
-      {!coverUrl && (
-        <section className="space-y-4">
-          <form onSubmit={search} className="flex gap-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Title, author, or ISBN"
-              className="flex-1 rounded-lg border border-ink/15 px-3 py-2"
-            />
-            <button
-              type="submit"
-              disabled={searching}
-              className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90 disabled:opacity-50"
-            >
-              {searching ? 'Searching...' : 'Search'}
-            </button>
-          </form>
-
-          {searchError && <p className="text-sm text-ink/60">{searchError}</p>}
-
-          {results.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {results.map((candidate, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => pickCandidate(candidate)}
-                  className="group text-left"
-                >
-                  <div className="aspect-[2/3] overflow-hidden rounded-lg border border-ink/10 bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={candidate.coverUrl}
-                      alt={candidate.title}
-                      className="h-full w-full object-cover transition group-hover:scale-105"
-                    />
-                  </div>
-                  <p className="mt-1 truncate text-xs">{candidate.title}</p>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="border-t border-ink/10 pt-4">
-            {flow === 'idle' && (
-              <button
-                type="button"
-                onClick={() => setFlow('camera')}
-                className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
-              >
-                No cover found — take a photo
-              </button>
-            )}
-            {flow === 'camera' && (
-              <CameraCapture
-                onCapture={(dataUrl) => {
-                  setCapturedImage(dataUrl);
-                  setFlow('crop');
-                }}
-                onCancel={() => setFlow('idle')}
-              />
-            )}
-            {flow === 'crop' && capturedImage && (
-              <AutoCropStage
-                capturedImage={capturedImage}
-                onConfirm={onCropConfirmed}
-                onRetake={() => setFlow('camera')}
-              />
-            )}
-          </div>
-        </section>
-      )}
+      {!coverUrl && <CoverPicker onSelected={onCoverSelected} />}
 
       {coverUrl && (
         <section className="space-y-5">

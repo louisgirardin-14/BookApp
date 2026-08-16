@@ -6,10 +6,14 @@ import ManualCropper from './ManualCropper';
 
 export default function AutoCropStage({
   capturedImage,
+  aspect = 2 / 3,
+  outputSize,
   onConfirm,
   onRetake,
 }: {
   capturedImage: string;
+  aspect?: number;
+  outputSize?: { width: number; height: number };
   onConfirm: (dataUrl: string) => void;
   onRetake: () => void;
 }) {
@@ -45,7 +49,15 @@ export default function AutoCropStage({
   }
 
   if (status === 'manual') {
-    return <ManualCropper imageSrc={capturedImage} onConfirm={onConfirm} onCancel={onRetake} />;
+    return (
+      <ManualCropper
+        imageSrc={capturedImage}
+        aspect={aspect}
+        outputSize={outputSize}
+        onConfirm={onConfirm}
+        onCancel={onRetake}
+      />
+    );
   }
 
   return (

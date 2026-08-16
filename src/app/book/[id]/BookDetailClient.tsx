@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import type { Book } from '@/lib/types';
 import StarRating from '@/components/StarRating';
-import { deleteBook, updateBook } from '@/app/actions';
+import CoverPicker, { type CoverPickResult } from '@/components/CoverPicker';
+import { deleteBook, mirrorCoverImage, updateBook, uploadCoverImage } from '@/app/actions';
+
+const SPINE_ASPECT = 1 / 5;
+const SPINE_OUTPUT_SIZE = { width: 300, height: 1500 };
 
 export default function BookDetailClient({ book }: { book: Book }) {
   const router = useRouter();
@@ -19,6 +23,14 @@ export default function BookDetailClient({ book }: { book: Book }) {
     rating: book.rating,
     notes: book.notes ?? '',
   });
+
+  const [changingCover, setChangingCover] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+
+  const [addingSpine, setAddingSpine] = useState(false);
+  const [spineBusy, setSpineBusy] = useState(false);
+  const [spineError, setSpineError] = useState<string | null>(null);
 
   function save() {
     startTransition(async () => {
@@ -43,10 +55,110 @@ export default function BookDetailClient({ book }: { book: Book }) {
     });
   }
 
+  async function onCoverSelected(result: CoverPickResult) {
+    setCoverBusy(true);
+    setCoverError(null);
+    try {
+      const finalUrl =
+        result.source === 'self-uploaded'
+          ? await uploadCoverImage(result.url, book.title)
+          : await mirrorCoverImage(result.url, book.title);
+      await updateBook(book.id, { cover_url: finalUrl, cover_source: result.source });
+      setChangingCover(false);
+      router.refresh();
+    } catch (err) {
+      setCoverError(err instanceof Error ? err.message : 'Failed to update cover.');
+    } finally {
+      setCoverBusy(false);
+    }
+  }
+
+  async function onSpineSelected(result: CoverPickResult) {
+    setSpineBusy(true);
+    setSpineError(null);
+    try {
+      const finalUrl = await uploadCoverImage(result.url, `${book.title}-spine`);
+      await updateBook(book.id, { spine_url: finalUrl });
+      setAddingSpine(false);
+      router.refresh();
+    } catch (err) {
+      setSpineError(err instanceof Error ? err.message : 'Failed to save spine photo.');
+    } finally {
+      setSpineBusy(false);
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-8 sm:grid-cols-[240px_1fr]">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
-        <Image src={book.cover_url} alt={book.title} fill className="object-cover" unoptimized />
+      <div className="space-y-3">
+        <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+          <Image src={book.cover_url} alt={book.title} fill className="object-cover" unoptimized />
+        </div>
+
+        {!changingCover ? (
+          <button
+            type="button"
+            onClick={() => setChangingCover(true)}
+            className="w-full rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
+          >
+            Change cover
+          </button>
+        ) : (
+          <div className="rounded-lg border border-ink/10 bg-white p-3">
+            {coverBusy ? (
+              <p className="text-sm text-ink/60">Saving cover...</p>
+            ) : (
+              <CoverPicker onSelected={onCoverSelected} />
+            )}
+            {coverError && <p className="mt-2 text-sm text-red-600">{coverError}</p>}
+            <button
+              type="button"
+              onClick={() => setChangingCover(false)}
+              className="mt-2 text-sm text-ink/60 hover:text-ink"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div className="rounded-lg border border-ink/10 bg-white p-3">
+          <p className="mb-2 text-xs font-medium text-ink/60">Spine photo</p>
+          {book.spine_url && !addingSpine && (
+            <div className="relative mb-2 h-24 w-full overflow-hidden rounded border border-ink/10 bg-ink/5">
+              <Image src={book.spine_url} alt={`${book.title} spine`} fill className="object-cover" unoptimized />
+            </div>
+          )}
+
+          {!addingSpine ? (
+            <button
+              type="button"
+              onClick={() => setAddingSpine(true)}
+              className="w-full rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
+            >
+              {book.spine_url ? 'Replace spine photo' : 'Add spine photo'}
+            </button>
+          ) : spineBusy ? (
+            <p className="text-sm text-ink/60">Saving spine photo...</p>
+          ) : (
+            <>
+              <CoverPicker
+                hideSearch
+                aspect={SPINE_ASPECT}
+                outputSize={SPINE_OUTPUT_SIZE}
+                photoButtonLabel="Take a photo of the spine"
+                onSelected={onSpineSelected}
+              />
+              {spineError && <p className="mt-2 text-sm text-red-600">{spineError}</p>}
+              <button
+                type="button"
+                onClick={() => setAddingSpine(false)}
+                className="mt-2 text-sm text-ink/60 hover:text-ink"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div>

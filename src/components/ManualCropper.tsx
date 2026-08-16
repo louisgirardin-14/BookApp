@@ -6,10 +6,14 @@ import { getCroppedImageDataUrl } from '@/lib/cropImage';
 
 export default function ManualCropper({
   imageSrc,
+  aspect = 2 / 3,
+  outputSize = { width: 1000, height: 1500 },
   onConfirm,
   onCancel,
 }: {
   imageSrc: string;
+  aspect?: number;
+  outputSize?: { width: number; height: number };
   onConfirm: (dataUrl: string) => void;
   onCancel: () => void;
 }) {
@@ -36,12 +40,7 @@ export default function ManualCropper({
     if (!croppedAreaPixels) return;
     setBusy(true);
     try {
-      const dataUrl = await getCroppedImageDataUrl(
-        imageSrc,
-        croppedAreaPixels,
-        { width: 1000, height: 1500 },
-        rotation
-      );
+      const dataUrl = await getCroppedImageDataUrl(imageSrc, croppedAreaPixels, outputSize, rotation);
       onConfirm(dataUrl);
     } finally {
       setBusy(false);
@@ -56,7 +55,7 @@ export default function ManualCropper({
           crop={crop}
           zoom={zoom}
           rotation={rotation}
-          aspect={2 / 3}
+          aspect={aspect}
           onCropChange={setCrop}
           onZoomChange={setZoom}
           onRotationChange={(r) => setFineAngle(r - quarterTurns * 90)}

@@ -7,6 +7,7 @@ export interface Book {
   isbn: string | null;
   cover_url: string;
   cover_source: CoverSource;
+  spine_url: string | null;
   date_read: string;
   rating: number | null;
   notes: string | null;
