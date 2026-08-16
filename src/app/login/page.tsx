@@ -1,9 +1,10 @@
 import { signIn } from './actions';
+import ClaimOwnerForm from './ClaimOwnerForm';
 
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { next?: string; error?: string };
+  searchParams: { next?: string; error?: string; claim?: string };
 }) {
   const next = searchParams.next ?? '/';
 
@@ -40,6 +41,8 @@ export default function LoginPage({
             Sign in
           </button>
         </form>
+
+        <ClaimOwnerForm next={next} initiallyOpen={searchParams.claim === '1'} />
       </div>
     </main>
   );
