@@ -1,5 +1,30 @@
 import { loadOpenCV } from './opencvLoader';
 
+// Phone cameras shoot at 8-12+ megapixels. OpenCV.js runs in a
+// memory-constrained WASM sandbox, and feeding it a full-resolution
+// photo directly can exhaust that memory and crash the tab. Downscale
+// before handing anything to OpenCV -- we only need enough resolution
+// for a good crop, not the original pixel count.
+const MAX_PROCESSING_DIMENSION = 1400;
+
+async function loadDownscaled(imageSrc: string, maxDim: number): Promise<HTMLCanvasElement> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = reject;
+    el.src = imageSrc;
+  });
+
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
 function distance(a: number[], b: number[]) {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
@@ -21,15 +46,9 @@ function orderCorners(points: number[][]): number[][] {
 // caller can fall back to manual cropping.
 export async function autoDetectAndCropCover(imageSrc: string): Promise<string | null> {
   const cv = await loadOpenCV();
+  const canvas = await loadDownscaled(imageSrc, MAX_PROCESSING_DIMENSION);
 
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const el = new Image();
-    el.onload = () => resolve(el);
-    el.onerror = reject;
-    el.src = imageSrc;
-  });
-
-  const src = cv.imread(img);
+  const src = cv.imread(canvas);
   const gray = new cv.Mat();
   const blurred = new cv.Mat();
   const edged = new cv.Mat();
