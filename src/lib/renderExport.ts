@@ -52,10 +52,18 @@ function drawCoverFit(
   ctx.restore();
 }
 
+export interface RenderExportOptions {
+  theme: ExportTheme;
+  layout: LayoutId;
+  title: string;
+  subtitle: string;
+  markerLabel?: string;
+}
+
 export async function renderExportCanvas(
   canvas: HTMLCanvasElement,
   books: Book[],
-  opts: { theme: ExportTheme; layout: LayoutId; statLabel: string }
+  opts: RenderExportOptions
 ) {
   canvas.width = EXPORT_WIDTH;
   canvas.height = EXPORT_HEIGHT;
@@ -66,21 +74,26 @@ export async function renderExportCanvas(
   ctx.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
 
   const margin = 64;
-  const headerHeight = 150;
+  const headerHeight = 128;
 
-  ctx.fillStyle = opts.theme.textColor;
-  ctx.font = '600 30px system-ui, -apple-system, sans-serif';
   ctx.textBaseline = 'top';
-  ctx.fillText(opts.statLabel.toUpperCase(), margin, margin);
+  ctx.fillStyle = opts.theme.textColor;
+  ctx.font = '700 36px system-ui, -apple-system, sans-serif';
+  ctx.fillText(opts.title, margin, margin);
 
-  ctx.fillStyle = opts.theme.accentColor;
-  ctx.fillRect(margin, margin + 48, 72, 6);
+  ctx.fillStyle = opts.theme.mutedColor;
+  ctx.font = '400 22px system-ui, -apple-system, sans-serif';
+  ctx.fillText(opts.subtitle, margin, margin + 52);
+
+  const hasMarker = opts.layout === 'spines' && !!opts.markerLabel;
+  const bottomReserve = hasMarker ? 56 : 0;
 
   const contentTop = margin + headerHeight;
-  const contentHeight = EXPORT_HEIGHT - contentTop - margin;
+  const contentHeight = EXPORT_HEIGHT - contentTop - margin - bottomReserve;
   const contentWidth = EXPORT_WIDTH - margin * 2;
 
   if (books.length === 0) {
+    ctx.fillStyle = opts.theme.mutedColor;
     ctx.font = '400 22px system-ui, sans-serif';
     ctx.fillText('No books in this range.', margin, contentTop);
     return;
@@ -92,6 +105,7 @@ export async function renderExportCanvas(
   const valid = books.map((b, i) => ({ book: b, img: images[i] })).filter((x) => x.img);
 
   if (valid.length === 0) {
+    ctx.fillStyle = opts.theme.mutedColor;
     ctx.font = '400 22px system-ui, sans-serif';
     ctx.fillText('Covers could not be loaded.', margin, contentTop);
     return;
@@ -115,15 +129,31 @@ export async function renderExportCanvas(
       drawCoverFit(ctx, img!, x, y, cellW, cellH, 10);
     });
   } else {
-    const gap = 4;
-    const minSpineW = 12;
-    const spineW = Math.max(minSpineW, (contentWidth - gap * (valid.length - 1)) / valid.length);
-    const usedWidth = Math.min(contentWidth, spineW * valid.length + gap * (valid.length - 1));
-    let x = margin + (contentWidth - usedWidth) / 2;
+    // Edge-to-edge "spine wall": no gaps, no rounding, full-bleed across the row.
+    const spineW = contentWidth / valid.length;
+    let x = margin;
 
     valid.forEach(({ img }) => {
-      drawCoverFit(ctx, img!, x, contentTop, spineW, contentHeight, 4);
-      x += spineW + gap;
+      drawCoverFit(ctx, img!, x, contentTop, spineW, contentHeight, 0);
+      x += spineW;
     });
+
+    if (hasMarker) {
+      const markerX = margin + contentWidth / 2;
+      const markerBottom = contentTop + contentHeight;
+
+      ctx.strokeStyle = opts.theme.mutedColor;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(markerX, markerBottom);
+      ctx.lineTo(markerX, markerBottom + 20);
+      ctx.stroke();
+
+      ctx.fillStyle = opts.theme.mutedColor;
+      ctx.font = '500 20px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(opts.markerLabel!, markerX, markerBottom + 26);
+      ctx.textAlign = 'left';
+    }
   }
 }

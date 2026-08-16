@@ -18,7 +18,8 @@ function monthRange(offset: number) {
   return {
     from: toISO(from),
     to: toISO(to),
-    label: `${from.toLocaleString('en-US', { month: 'long' })} reads`,
+    title: `${from.toLocaleString('en-US', { month: 'long' })} Reads`,
+    markerLabel: String(from.getFullYear()),
   };
 }
 
@@ -38,14 +39,15 @@ export default function ExportPage() {
   function currentRange() {
     if (rangeMode === 'this-month') return monthRange(0);
     if (rangeMode === 'last-month') return monthRange(-1);
-    return { from: customFrom, to: customTo, label: 'reads' };
+    const toYear = new Date(customTo).getFullYear();
+    return { from: customFrom, to: customTo, title: 'Reading', markerLabel: String(toYear) };
   }
 
   async function loadAndRender() {
     setBusy(true);
     setError(null);
     try {
-      const { from, to, label } = currentRange();
+      const { from, to, title, markerLabel } = currentRange();
       const res = await fetch(`/api/books-for-export?from=${from}&to=${to}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -54,11 +56,14 @@ export default function ExportPage() {
 
       const theme = EXPORT_THEMES.find((t) => t.id === themeId)!;
       const canvas = canvasRef.current;
+      const count = fetchedBooks.length;
       if (canvas) {
         await renderExportCanvas(canvas, fetchedBooks, {
           theme,
           layout,
-          statLabel: `${label}: ${fetchedBooks.length}`,
+          title,
+          subtitle: `${count} ${count === 1 ? 'book' : 'books'}`,
+          markerLabel,
         });
       }
     } catch (err) {

@@ -6,13 +6,13 @@ export interface ExportTheme {
   label: string;
   background: string;
   textColor: string;
-  accentColor: string;
+  mutedColor: string;
 }
 
 export const EXPORT_THEMES: ExportTheme[] = [
-  { id: 'cream', label: 'Light / Cream', background: '#f6f1e7', textColor: '#2a2622', accentColor: '#b08d57' },
-  { id: 'dark', label: 'Dark', background: '#181614', textColor: '#f6f1e7', accentColor: '#c9a86a' },
-  { id: 'kraft', label: 'Kraft Paper', background: '#c9a06a', textColor: '#2a2018', accentColor: '#5a3d24' },
+  { id: 'cream', label: 'Light / Cream', background: '#f6f1e7', textColor: '#2a2622', mutedColor: '#8a8072' },
+  { id: 'dark', label: 'Dark', background: '#000000', textColor: '#f5f3ef', mutedColor: '#8c8880' },
+  { id: 'kraft', label: 'Kraft Paper', background: '#c9a06a', textColor: '#2a2018', mutedColor: '#6b4a2c' },
 ];
 
 export const EXPORT_WIDTH = 1080;
