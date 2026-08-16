@@ -86,15 +86,17 @@ function drawTick(
   }
 }
 
-// Draws tick marks + labels under the spine row at each point the
-// month (or year, if the range spans multiple years) changes, so the
-// row reads as a chronological timeline rather than an undated stack.
+// Draws a single horizontal line running the width of the spine row,
+// with tick marks + labels dropping from it at each point the month (or
+// year, for multi-year ranges) changes -- a real timeline axis linking
+// the books together, rather than floating disconnected labels.
 function drawTimeline(
   ctx: CanvasRenderingContext2D,
   valid: { book: Book }[],
   margin: number,
   spineW: number,
-  markerBottom: number,
+  rowWidth: number,
+  lineY: number,
   theme: ExportTheme
 ) {
   const dates = valid.map((v) => v.book.date_read);
@@ -105,9 +107,14 @@ function drawTimeline(
   ctx.font = '500 18px system-ui, -apple-system, sans-serif';
   ctx.lineWidth = 1.5;
 
+  ctx.beginPath();
+  ctx.moveTo(margin, lineY);
+  ctx.lineTo(margin + rowWidth, lineY);
+  ctx.stroke();
+
   if (!spansMultipleYears && new Set(dates.map(monthKeyOf)).size === 1) {
     // Everything falls in a single month: one centered marker is enough.
-    drawTick(ctx, margin + (spineW * valid.length) / 2, markerBottom, yearKeyOf(dates[0]));
+    drawTick(ctx, margin + rowWidth / 2, lineY, yearKeyOf(dates[0]));
     return;
   }
 
@@ -125,7 +132,7 @@ function drawTimeline(
 
     const x = margin + i * spineW;
     const showLabel = x - lastLabelX > minLabelGap;
-    drawTick(ctx, x, markerBottom, showLabel ? labelFn(v.book.date_read) : null);
+    drawTick(ctx, x, lineY, showLabel ? labelFn(v.book.date_read) : null);
     if (showLabel) lastLabelX = x;
   });
 }
@@ -158,9 +165,13 @@ export async function renderExportCanvas(
   ctx.font = '700 36px system-ui, -apple-system, sans-serif';
   ctx.fillText(opts.title, margin, margin);
 
-  ctx.fillStyle = opts.theme.mutedColor;
-  ctx.font = '400 22px system-ui, -apple-system, sans-serif';
-  ctx.fillText(opts.subtitle, margin, margin + 52);
+  // The spines layout tells its own story through the timeline below --
+  // a book count here reads as a cold stat rather than a keepsake.
+  if (opts.layout !== 'spines') {
+    ctx.fillStyle = opts.theme.mutedColor;
+    ctx.font = '400 22px system-ui, -apple-system, sans-serif';
+    ctx.fillText(opts.subtitle, margin, margin + 52);
+  }
 
   const hasTimeline = opts.layout === 'spines' && books.length > 0;
   const bottomReserve = hasTimeline ? 56 : 0;
@@ -221,7 +232,7 @@ export async function renderExportCanvas(
     });
 
     if (hasTimeline) {
-      drawTimeline(ctx, valid, margin, spineW, contentTop + contentHeight, opts.theme);
+      drawTimeline(ctx, valid, margin, spineW, contentWidth, contentTop + contentHeight, opts.theme);
     }
   }
 }
