@@ -1,6 +1,14 @@
 import 'server-only';
 import type { CoverCandidate } from './types';
 
+function normalizeIsbn(raw: string): string | null {
+  const cleaned = raw.replace(/[-\s]/g, '').toUpperCase();
+  if (/^\d{9}[\dX]$/.test(cleaned) || /^\d{13}$/.test(cleaned)) {
+    return cleaned;
+  }
+  return null;
+}
+
 interface OpenLibraryDoc {
   title: string;
   author_name?: string[];
@@ -25,6 +33,35 @@ async function searchOpenLibrary(query: string): Promise<CoverCandidate[]> {
       isbn: doc.isbn?.[0] ?? null,
       coverUrl: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
     }));
+}
+
+interface OpenLibraryBookData {
+  title: string;
+  authors?: { name: string }[];
+  cover?: { small?: string; medium?: string; large?: string };
+}
+
+// Open Library's general search index misses many editions (especially
+// small-press/regional ones). Its dedicated ISBN lookup is far more
+// reliable for exact-ISBN matches.
+async function lookupOpenLibraryByIsbn(isbn: string): Promise<CoverCandidate[]> {
+  const res = await fetch(
+    `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`,
+    { cache: 'no-store' }
+  );
+  if (!res.ok) return [];
+  const data = (await res.json()) as Record<string, OpenLibraryBookData>;
+  const entry = data[`ISBN:${isbn}`];
+  if (!entry?.cover) return [];
+  return [
+    {
+      source: 'openlibrary' as const,
+      title: entry.title,
+      author: entry.authors?.[0]?.name ?? 'Unknown',
+      isbn,
+      coverUrl: entry.cover.large ?? entry.cover.medium ?? entry.cover.small ?? '',
+    },
+  ];
 }
 
 interface GoogleVolume {
@@ -62,9 +99,22 @@ async function searchGoogleBooks(query: string): Promise<CoverCandidate[]> {
     });
 }
 
-// Query Open Library first; if it returns nothing with a cover, fall back
-// to Google Books. Both are keyless public APIs.
+// If the query is ISBN-shaped, use each provider's exact-ISBN lookup
+// (far more reliable than a raw text search) before falling back to a
+// general title/author search. Open Library is tried first, then Google
+// Books, matching the brief's stated provider priority.
 export async function searchBookCovers(query: string): Promise<CoverCandidate[]> {
+  const isbn = normalizeIsbn(query);
+  if (isbn) {
+    const olResults = await lookupOpenLibraryByIsbn(isbn);
+    if (olResults.length > 0) return olResults;
+
+    const gbResults = await searchGoogleBooks(`isbn:${isbn}`);
+    if (gbResults.length > 0) return gbResults;
+
+    return [];
+  }
+
   const openLibraryResults = await searchOpenLibrary(query);
   if (openLibraryResults.length > 0) return openLibraryResults;
   return searchGoogleBooks(query);
