@@ -49,6 +49,7 @@ export default function CoverPicker({
     setSearching(true);
     setSearchError(null);
     setBrokenIndices(new Set());
+    setResults([]);
     try {
       const res = await fetch(`/api/search-covers?q=${encodeURIComponent(query)}`);
       const data = await res.json();
