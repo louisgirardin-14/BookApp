@@ -4,6 +4,7 @@ import { signOutAction } from './actions';
 import VisibilityToggle from './VisibilityToggle';
 import InviteFriendForm from './InviteFriendForm';
 import ChangePasswordForm from './ChangePasswordForm';
+import ManageAccountsSection from './ManageAccountsSection';
 import DeleteAccountButton from './DeleteAccountButton';
 
 export default async function SettingsPage() {
@@ -20,6 +21,16 @@ export default async function SettingsPage() {
     .single();
 
   const isOwner = user.email === process.env.OWNER_EMAIL;
+
+  let otherAccounts: { id: string; email: string | null }[] = [];
+  if (isOwner) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .neq('id', user.id)
+      .order('email', { ascending: true });
+    otherAccounts = data ?? [];
+  }
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
@@ -58,6 +69,16 @@ export default async function SettingsPage() {
             Signup is invite-only. Only your account can send invites.
           </p>
           <InviteFriendForm />
+        </section>
+      )}
+
+      {isOwner && (
+        <section className="space-y-2 border-t border-ink/10 pt-6">
+          <h2 className="text-sm font-medium">Manage accounts</h2>
+          <p className="text-sm text-ink/60">
+            Permanently removes an account, their books, and their photos.
+          </p>
+          <ManageAccountsSection accounts={otherAccounts} />
         </section>
       )}
 

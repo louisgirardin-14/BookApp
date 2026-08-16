@@ -82,20 +82,13 @@ export async function signOutAction() {
   redirect('/login');
 }
 
-// GDPR right-to-erasure: deletes this account's photos from storage, then
-// deletes the auth user, which cascades (via FK) to their profile and
-// every book they own.
-export async function deleteAccount() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in.');
-
-  const { data: books } = await supabase
+// Deletes an account's photos from storage, then deletes the auth user,
+// which cascades (via FK) to their profile and every book they own.
+async function purgeAccount(userId: string) {
+  const { data: books } = await supabaseAdmin
     .from('books')
     .select('cover_url, spine_url')
-    .eq('user_id', user.id);
+    .eq('user_id', userId);
 
   const bucketMarker = '/storage/v1/object/public/covers/';
   const paths = (books ?? [])
@@ -107,6 +100,33 @@ export async function deleteAccount() {
     await supabaseAdmin.storage.from('covers').remove(paths);
   }
 
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
   if (error) throw new Error(error.message);
+}
+
+// GDPR right-to-erasure, self-serve.
+export async function deleteAccount() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in.');
+  await purgeAccount(user.id);
+}
+
+// Owner-only: removes another account entirely (books, photos, login).
+export async function removeUserAccount(targetUserId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.email !== process.env.OWNER_EMAIL) {
+    throw new Error('Only the owner can remove accounts.');
+  }
+  if (targetUserId === user.id) {
+    throw new Error('Use "Delete my account" for your own account.');
+  }
+
+  await purgeAccount(targetUserId);
+  revalidatePath('/settings');
 }
