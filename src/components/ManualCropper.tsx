@@ -15,6 +15,12 @@ export default function ManualCropper({
 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  // Rotation is split into 90-degree orientation turns (for a sideways or
+  // upside-down photo) and a small fine angle (for straightening a
+  // slightly crooked shot), then combined for the actual crop rotation.
+  const [quarterTurns, setQuarterTurns] = useState(0);
+  const [fineAngle, setFineAngle] = useState(0);
+  const rotation = quarterTurns * 90 + fineAngle;
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -22,14 +28,20 @@ export default function ManualCropper({
     setCroppedAreaPixels(pixels);
   }, []);
 
+  function rotateQuarterTurn(direction: 1 | -1) {
+    setQuarterTurns((q) => (q + direction + 4) % 4);
+  }
+
   async function confirm() {
     if (!croppedAreaPixels) return;
     setBusy(true);
     try {
-      const dataUrl = await getCroppedImageDataUrl(imageSrc, croppedAreaPixels, {
-        width: 1000,
-        height: 1500,
-      });
+      const dataUrl = await getCroppedImageDataUrl(
+        imageSrc,
+        croppedAreaPixels,
+        { width: 1000, height: 1500 },
+        rotation
+      );
       onConfirm(dataUrl);
     } finally {
       setBusy(false);
@@ -43,12 +55,35 @@ export default function ManualCropper({
           image={imageSrc}
           crop={crop}
           zoom={zoom}
+          rotation={rotation}
           aspect={2 / 3}
           onCropChange={setCrop}
           onZoomChange={setZoom}
+          onRotationChange={(r) => setFineAngle(r - quarterTurns * 90)}
           onCropComplete={onCropComplete}
         />
       </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => rotateQuarterTurn(-1)}
+          className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
+          aria-label="Rotate left 90 degrees"
+        >
+          ⟲ Rotate
+        </button>
+        <button
+          type="button"
+          onClick={() => rotateQuarterTurn(1)}
+          className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
+          aria-label="Rotate right 90 degrees"
+        >
+          ⟳ Rotate
+        </button>
+      </div>
+
+      <label className="mt-3 block text-xs font-medium text-ink/60">Zoom</label>
       <input
         type="range"
         min={1}
@@ -56,8 +91,20 @@ export default function ManualCropper({
         step={0.05}
         value={zoom}
         onChange={(e) => setZoom(Number(e.target.value))}
-        className="mt-3 w-full"
+        className="w-full"
       />
+
+      <label className="mt-2 block text-xs font-medium text-ink/60">Straighten</label>
+      <input
+        type="range"
+        min={-45}
+        max={45}
+        step={0.5}
+        value={fineAngle}
+        onChange={(e) => setFineAngle(Number(e.target.value))}
+        className="w-full"
+      />
+
       <div className="mt-3 flex gap-3">
         <button
           type="button"
