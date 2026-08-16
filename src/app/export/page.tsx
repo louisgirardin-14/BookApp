@@ -19,7 +19,6 @@ function monthRange(offset: number) {
     from: toISO(from),
     to: toISO(to),
     title: `${from.toLocaleString('en-US', { month: 'long' })} Reads`,
-    markerLabel: String(from.getFullYear()),
   };
 }
 
@@ -39,15 +38,14 @@ export default function ExportPage() {
   function currentRange() {
     if (rangeMode === 'this-month') return monthRange(0);
     if (rangeMode === 'last-month') return monthRange(-1);
-    const toYear = new Date(customTo).getFullYear();
-    return { from: customFrom, to: customTo, title: 'Reading', markerLabel: String(toYear) };
+    return { from: customFrom, to: customTo, title: 'Reading' };
   }
 
   async function loadAndRender() {
     setBusy(true);
     setError(null);
     try {
-      const { from, to, title, markerLabel } = currentRange();
+      const { from, to, title } = currentRange();
       const res = await fetch(`/api/books-for-export?from=${from}&to=${to}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -63,7 +61,6 @@ export default function ExportPage() {
           layout,
           title,
           subtitle: `${count} ${count === 1 ? 'book' : 'books'}`,
-          markerLabel,
         });
       }
     } catch (err) {

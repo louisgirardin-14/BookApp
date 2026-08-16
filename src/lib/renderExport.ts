@@ -52,12 +52,89 @@ function drawCoverFit(
   ctx.restore();
 }
 
+function parseDate(dateStr: string) {
+  return new Date(dateStr + 'T00:00:00');
+}
+
+function yearKeyOf(dateStr: string) {
+  return String(parseDate(dateStr).getFullYear());
+}
+
+function monthKeyOf(dateStr: string) {
+  const d = parseDate(dateStr);
+  return `${d.getFullYear()}-${d.getMonth()}`;
+}
+
+function monthLabelOf(dateStr: string) {
+  return parseDate(dateStr).toLocaleString('en-US', { month: 'short' });
+}
+
+function drawTick(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  label: string | null
+) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y + 16);
+  ctx.stroke();
+  if (label) {
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y + 22);
+    ctx.textAlign = 'left';
+  }
+}
+
+// Draws tick marks + labels under the spine row at each point the
+// month (or year, if the range spans multiple years) changes, so the
+// row reads as a chronological timeline rather than an undated stack.
+function drawTimeline(
+  ctx: CanvasRenderingContext2D,
+  valid: { book: Book }[],
+  margin: number,
+  spineW: number,
+  markerBottom: number,
+  theme: ExportTheme
+) {
+  const dates = valid.map((v) => v.book.date_read);
+  const spansMultipleYears = new Set(dates.map(yearKeyOf)).size > 1;
+
+  ctx.strokeStyle = theme.mutedColor;
+  ctx.fillStyle = theme.mutedColor;
+  ctx.font = '500 18px system-ui, -apple-system, sans-serif';
+  ctx.lineWidth = 1.5;
+
+  if (!spansMultipleYears && new Set(dates.map(monthKeyOf)).size === 1) {
+    // Everything falls in a single month: one centered marker is enough.
+    drawTick(ctx, margin + (spineW * valid.length) / 2, markerBottom, yearKeyOf(dates[0]));
+    return;
+  }
+
+  const keyFn = spansMultipleYears ? yearKeyOf : monthKeyOf;
+  const labelFn = spansMultipleYears ? yearKeyOf : monthLabelOf;
+  const minLabelGap = 48;
+
+  let lastKey: string | null = null;
+  let lastLabelX = -Infinity;
+
+  valid.forEach((v, i) => {
+    const key = keyFn(v.book.date_read);
+    if (key === lastKey) return;
+    lastKey = key;
+
+    const x = margin + i * spineW;
+    const showLabel = x - lastLabelX > minLabelGap;
+    drawTick(ctx, x, markerBottom, showLabel ? labelFn(v.book.date_read) : null);
+    if (showLabel) lastLabelX = x;
+  });
+}
+
 export interface RenderExportOptions {
   theme: ExportTheme;
   layout: LayoutId;
   title: string;
   subtitle: string;
-  markerLabel?: string;
 }
 
 export async function renderExportCanvas(
@@ -85,8 +162,8 @@ export async function renderExportCanvas(
   ctx.font = '400 22px system-ui, -apple-system, sans-serif';
   ctx.fillText(opts.subtitle, margin, margin + 52);
 
-  const hasMarker = opts.layout === 'spines' && !!opts.markerLabel;
-  const bottomReserve = hasMarker ? 56 : 0;
+  const hasTimeline = opts.layout === 'spines' && books.length > 0;
+  const bottomReserve = hasTimeline ? 56 : 0;
 
   const contentTop = margin + headerHeight;
   const contentHeight = EXPORT_HEIGHT - contentTop - margin - bottomReserve;
@@ -138,22 +215,8 @@ export async function renderExportCanvas(
       x += spineW;
     });
 
-    if (hasMarker) {
-      const markerX = margin + contentWidth / 2;
-      const markerBottom = contentTop + contentHeight;
-
-      ctx.strokeStyle = opts.theme.mutedColor;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(markerX, markerBottom);
-      ctx.lineTo(markerX, markerBottom + 20);
-      ctx.stroke();
-
-      ctx.fillStyle = opts.theme.mutedColor;
-      ctx.font = '500 20px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(opts.markerLabel!, markerX, markerBottom + 26);
-      ctx.textAlign = 'left';
+    if (hasTimeline) {
+      drawTimeline(ctx, valid, margin, spineW, contentTop + contentHeight, opts.theme);
     }
   }
 }
