@@ -38,6 +38,7 @@ export default function CoverPicker({
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<CoverCandidate[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [brokenIndices, setBrokenIndices] = useState<Set<number>>(new Set());
 
   const [flow, setFlow] = useState<Flow>('idle');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -47,6 +48,7 @@ export default function CoverPicker({
     if (!query.trim()) return;
     setSearching(true);
     setSearchError(null);
+    setBrokenIndices(new Set());
     try {
       const res = await fetch(`/api/search-covers?q=${encodeURIComponent(query)}`);
       const data = await res.json();
@@ -97,26 +99,31 @@ export default function CoverPicker({
 
           {searchError && <p className="text-sm text-ink/60">{searchError}</p>}
 
-          {results.length > 0 && (
+          {results.some((_, i) => !brokenIndices.has(i)) && (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {results.map((candidate, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => pickCandidate(candidate)}
-                  className="group text-left"
-                >
-                  <div className="aspect-[2/3] overflow-hidden rounded-lg border border-ink/10 bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={candidate.coverUrl}
-                      alt={candidate.title}
-                      className="h-full w-full object-cover transition group-hover:scale-105"
-                    />
-                  </div>
-                  <p className="mt-1 truncate text-xs">{candidate.title}</p>
-                </button>
-              ))}
+              {results.map((candidate, i) =>
+                brokenIndices.has(i) ? null : (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => pickCandidate(candidate)}
+                    className="group text-left"
+                  >
+                    <div className="aspect-[2/3] overflow-hidden rounded-lg border border-ink/10 bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={candidate.coverUrl}
+                        alt={candidate.title}
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                        onError={() =>
+                          setBrokenIndices((prev) => new Set(prev).add(i))
+                        }
+                      />
+                    </div>
+                    <p className="mt-1 truncate text-xs">{candidate.title}</p>
+                  </button>
+                )
+              )}
             </div>
           )}
         </>

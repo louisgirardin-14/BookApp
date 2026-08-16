@@ -115,7 +115,15 @@ export async function searchBookCovers(query: string): Promise<CoverCandidate[]>
     return [];
   }
 
-  const openLibraryResults = await searchOpenLibrary(query);
-  if (openLibraryResults.length > 0) return openLibraryResults;
-  return searchGoogleBooks(query);
+  // Query both providers and merge results, rather than only falling back
+  // to Google Books when Open Library returns zero results -- Open
+  // Library's search index can list a cover_i whose image is individually
+  // stale or slow, so having Google Books candidates alongside gives the
+  // user something to fall back to even when Open Library "succeeded" but
+  // some of its cover links don't actually load.
+  const [openLibraryResults, googleResults] = await Promise.all([
+    searchOpenLibrary(query).catch(() => []),
+    searchGoogleBooks(query).catch(() => []),
+  ]);
+  return [...openLibraryResults, ...googleResults];
 }
