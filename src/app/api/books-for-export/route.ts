@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,9 +10,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'from and to are required' }, { status: 400 });
   }
 
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const { data, error } = await supabase
     .from('books')
     .select('*')
+    .eq('user_id', user.id)
     .gte('date_read', from)
     .lte('date_read', to)
     .order('date_read', { ascending: true });

@@ -1,25 +1,48 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { AUTH_COOKIE } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-export async function login(formData: FormData) {
+export async function signIn(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
   const next = String(formData.get('next') ?? '/');
-  const expected = process.env.APP_PASSWORD;
 
-  if (!expected || password !== expected) {
-    redirect(`/login?next=${encodeURIComponent(next)}&error=1`);
+  const supabase = createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    redirect(`/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent(error.message)}`);
   }
 
-  cookies().set(AUTH_COOKIE, expected, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  });
-
   redirect(next || '/');
+}
+
+function siteOrigin() {
+  const host = headers().get('host')!;
+  const protocol = host.startsWith('localhost') ? 'http' : 'https';
+  return `${protocol}://${host}`;
+}
+
+// One-time bootstrap: invites the owner account (OWNER_EMAIL) so the very
+// first login can happen with no accounts existing yet. No-ops once any
+// account exists, so it can't be replayed to spam invites.
+export async function bootstrapOwnerInvite() {
+  const { count } = await supabaseAdmin
+    .from('profiles')
+    .select('*', { count: 'exact', head: true });
+
+  if (count && count > 0) {
+    throw new Error('Setup has already been completed -- log in normally.');
+  }
+
+  const ownerEmail = process.env.OWNER_EMAIL;
+  if (!ownerEmail) throw new Error('OWNER_EMAIL is not configured on the server.');
+
+  const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(ownerEmail, {
+    redirectTo: `${siteOrigin()}/auth/set-password`,
+  });
+  if (error) throw new Error(error.message);
 }

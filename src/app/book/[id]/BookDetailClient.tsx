@@ -11,7 +11,7 @@ import { deleteBook, mirrorCoverImage, updateBook, uploadCoverImage } from '@/ap
 const SPINE_ASPECT = 1 / 5;
 const SPINE_OUTPUT_SIZE = { width: 300, height: 1500 };
 
-export default function BookDetailClient({ book }: { book: Book }) {
+export default function BookDetailClient({ book, isOwner }: { book: Book; isOwner: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -95,70 +95,80 @@ export default function BookDetailClient({ book }: { book: Book }) {
           <Image src={book.cover_url} alt={book.title} fill className="object-cover" unoptimized />
         </div>
 
-        {!changingCover ? (
-          <button
-            type="button"
-            onClick={() => setChangingCover(true)}
-            className="w-full rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
-          >
-            Change cover
-          </button>
-        ) : (
-          <div className="rounded-lg border border-ink/10 bg-white p-3">
-            {coverBusy ? (
-              <p className="text-sm text-ink/60">Saving cover...</p>
-            ) : (
-              <CoverPicker onSelected={onCoverSelected} />
-            )}
-            {coverError && <p className="mt-2 text-sm text-red-600">{coverError}</p>}
-            <button
-              type="button"
-              onClick={() => setChangingCover(false)}
-              className="mt-2 text-sm text-ink/60 hover:text-ink"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-
-        <div className="rounded-lg border border-ink/10 bg-white p-3">
-          <p className="mb-2 text-xs font-medium text-ink/60">Spine photo</p>
-          {book.spine_url && !addingSpine && (
-            <div className="relative mb-2 h-24 w-full overflow-hidden rounded border border-ink/10 bg-ink/5">
-              <Image src={book.spine_url} alt={`${book.title} spine`} fill className="object-cover" unoptimized />
-            </div>
-          )}
-
-          {!addingSpine ? (
-            <button
-              type="button"
-              onClick={() => setAddingSpine(true)}
-              className="w-full rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
-            >
-              {book.spine_url ? 'Replace spine photo' : 'Add spine photo'}
-            </button>
-          ) : spineBusy ? (
-            <p className="text-sm text-ink/60">Saving spine photo...</p>
-          ) : (
-            <>
-              <CoverPicker
-                hideSearch
-                aspect={SPINE_ASPECT}
-                outputSize={SPINE_OUTPUT_SIZE}
-                photoButtonLabel="Take a photo of the spine"
-                onSelected={onSpineSelected}
-              />
-              {spineError && <p className="mt-2 text-sm text-red-600">{spineError}</p>}
+        {isOwner && (
+          <>
+            {!changingCover ? (
               <button
                 type="button"
-                onClick={() => setAddingSpine(false)}
-                className="mt-2 text-sm text-ink/60 hover:text-ink"
+                onClick={() => setChangingCover(true)}
+                className="w-full rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
               >
-                Cancel
+                Change cover
               </button>
-            </>
-          )}
-        </div>
+            ) : (
+              <div className="rounded-lg border border-ink/10 bg-white p-3">
+                {coverBusy ? (
+                  <p className="text-sm text-ink/60">Saving cover...</p>
+                ) : (
+                  <CoverPicker onSelected={onCoverSelected} />
+                )}
+                {coverError && <p className="mt-2 text-sm text-red-600">{coverError}</p>}
+                <button
+                  type="button"
+                  onClick={() => setChangingCover(false)}
+                  className="mt-2 text-sm text-ink/60 hover:text-ink"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-ink/10 bg-white p-3">
+              <p className="mb-2 text-xs font-medium text-ink/60">Spine photo</p>
+              {book.spine_url && !addingSpine && (
+                <div className="relative mb-2 h-24 w-full overflow-hidden rounded border border-ink/10 bg-ink/5">
+                  <Image
+                    src={book.spine_url}
+                    alt={`${book.title} spine`}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
+
+              {!addingSpine ? (
+                <button
+                  type="button"
+                  onClick={() => setAddingSpine(true)}
+                  className="w-full rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
+                >
+                  {book.spine_url ? 'Replace spine photo' : 'Add spine photo'}
+                </button>
+              ) : spineBusy ? (
+                <p className="text-sm text-ink/60">Saving spine photo...</p>
+              ) : (
+                <>
+                  <CoverPicker
+                    hideSearch
+                    aspect={SPINE_ASPECT}
+                    outputSize={SPINE_OUTPUT_SIZE}
+                    photoButtonLabel="Take a photo of the spine"
+                    onSelected={onSpineSelected}
+                  />
+                  {spineError && <p className="mt-2 text-sm text-red-600">{spineError}</p>}
+                  <button
+                    type="button"
+                    onClick={() => setAddingSpine(false)}
+                    className="mt-2 text-sm text-ink/60 hover:text-ink"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div>
@@ -240,21 +250,23 @@ export default function BookDetailClient({ book }: { book: Book }) {
             {book.isbn && <p className="mt-1 text-sm text-ink/60">ISBN: {book.isbn}</p>}
             {book.notes && <p className="mt-4 whitespace-pre-wrap text-sm">{book.notes}</p>}
 
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setEditing(true)}
-                className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90"
-              >
-                Edit
-              </button>
-              <button
-                onClick={remove}
-                disabled={isPending}
-                className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-              >
-                Delete
-              </button>
-            </div>
+            {isOwner && (
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setEditing(true)}
+                  className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={remove}
+                  disabled={isPending}
+                  className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -70,13 +70,39 @@ export default function ExportPage() {
     }
   }
 
-  function download() {
+  function getCanvasBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  // On iOS/Android, `<a download>` with a data: URL is unreliable and often
+  // doesn't reach Photos at all. The native share sheet's "Save Image"
+  // option is the standard, reliable way to get an image into Photos on
+  // mobile web -- and it also lets the user pick Instagram directly.
+  async function saveImage() {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const blob = await getCanvasBlob(canvas);
+    if (!blob) return;
+
+    const file = new File([blob], 'shelf-export.png', { type: 'image/png' });
+
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch {
+        // User cancelled the share sheet, or share failed -- fall back
+        // to a classic download link below.
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.download = 'shelf-export.png';
-    link.href = canvas.toDataURL('image/png');
+    link.href = url;
     link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -157,10 +183,10 @@ export default function ExportPage() {
         {books && books.length > 0 && (
           <button
             type="button"
-            onClick={download}
+            onClick={saveImage}
             className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
           >
-            Download PNG
+            Save / Share
           </button>
         )}
       </div>

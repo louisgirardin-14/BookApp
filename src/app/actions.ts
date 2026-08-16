@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { CoverSource } from '@/lib/types';
 
@@ -16,22 +17,38 @@ export interface BookInput {
   notes: string | null;
 }
 
+async function requireUser() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in.');
+  return { supabase, user };
+}
+
 export async function addBook(input: BookInput) {
-  const { data, error } = await supabaseAdmin.from('books').insert(input).select('id').single();
+  const { supabase, user } = await requireUser();
+  const { data, error } = await supabase
+    .from('books')
+    .insert({ ...input, user_id: user.id })
+    .select('id')
+    .single();
   if (error) throw new Error(error.message);
   revalidatePath('/');
   return data.id as string;
 }
 
 export async function updateBook(id: string, input: Partial<BookInput>) {
-  const { error } = await supabaseAdmin.from('books').update(input).eq('id', id);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from('books').update(input).eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath('/');
   revalidatePath(`/book/${id}`);
 }
 
 export async function deleteBook(id: string) {
-  const { error } = await supabaseAdmin.from('books').delete().eq('id', id);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from('books').delete().eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath('/');
 }

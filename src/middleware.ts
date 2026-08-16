@@ -1,29 +1,28 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { AUTH_COOKIE } from '@/lib/auth';
+import { updateSession } from '@/lib/supabase/middleware';
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const { response, user } = await updateSession(req);
 
-  if (
+  const isPublicRoute =
     pathname.startsWith('/login') ||
-    pathname.startsWith('/api/login') ||
+    pathname.startsWith('/auth') ||
     pathname.startsWith('/_next') ||
-    pathname === '/favicon.ico'
-  ) {
-    return NextResponse.next();
+    pathname === '/favicon.ico';
+
+  if (isPublicRoute) {
+    return response;
   }
 
-  const cookie = req.cookies.get(AUTH_COOKIE)?.value;
-  const expected = process.env.APP_PASSWORD;
-
-  if (expected && cookie === expected) {
-    return NextResponse.next();
+  if (!user) {
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  const loginUrl = new URL('/login', req.url);
-  loginUrl.searchParams.set('next', pathname);
-  return NextResponse.redirect(loginUrl);
+  return response;
 }
 
 export const config = {
