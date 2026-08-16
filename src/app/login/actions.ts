@@ -26,23 +26,41 @@ function siteOrigin() {
   return `${protocol}://${host}`;
 }
 
-// One-time bootstrap: invites the owner account (OWNER_EMAIL) so the very
-// first login can happen with no accounts existing yet. No-ops once any
-// account exists, so it can't be replayed to spam invites.
-export async function bootstrapOwnerInvite() {
-  const { count } = await supabaseAdmin
-    .from('profiles')
-    .select('*', { count: 'exact', head: true });
-
-  if (count && count > 0) {
-    throw new Error('Setup has already been completed -- log in normally.');
-  }
-
+// Returns a direct access link for OWNER_EMAIL instead of relying on
+// email delivery (which can be slow, filtered, or rate-limited on
+// Supabase's shared sending domain). Only works before the owner's very
+// first successful sign-in -- this page is public, so once the real
+// owner has logged in even once, this must stop producing a usable link
+// for anyone who finds the button, or it would be an account takeover.
+export async function bootstrapOwnerAccess(): Promise<string> {
   const ownerEmail = process.env.OWNER_EMAIL;
   if (!ownerEmail) throw new Error('OWNER_EMAIL is not configured on the server.');
 
-  const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(ownerEmail, {
-    redirectTo: `${siteOrigin()}/auth/set-password`,
+  const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+  if (listError) throw new Error(listError.message);
+  const existing = list.users.find((u) => u.email === ownerEmail);
+
+  if (existing?.last_sign_in_at) {
+    throw new Error('This account is already set up -- log in with your password instead.');
+  }
+
+  const redirectTo = `${siteOrigin()}/auth/set-password`;
+
+  if (!existing) {
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email: ownerEmail,
+      options: { redirectTo },
+    });
+    if (error) throw new Error(error.message);
+    return data.properties.action_link;
+  }
+
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'recovery',
+    email: ownerEmail,
+    options: { redirectTo },
   });
   if (error) throw new Error(error.message);
+  return data.properties.action_link;
 }

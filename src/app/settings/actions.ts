@@ -25,8 +25,11 @@ function siteOrigin() {
 }
 
 // Owner-only: invite-only signup means new accounts can only be created
-// this way, by the account whose email matches OWNER_EMAIL.
-export async function inviteFriend(email: string) {
+// this way, by the account whose email matches OWNER_EMAIL. Returns the
+// invite link directly (rather than relying solely on Supabase's shared
+// email sending, which can be slow or filtered) so the owner can also
+// just text/message it to their friend.
+export async function inviteFriend(email: string): Promise<string> {
   const supabase = createClient();
   const {
     data: { user },
@@ -35,10 +38,13 @@ export async function inviteFriend(email: string) {
     throw new Error('Only the owner can invite people.');
   }
 
-  const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteOrigin()}/auth/set-password`,
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo: `${siteOrigin()}/auth/set-password` },
   });
   if (error) throw new Error(error.message);
+  return data.properties.action_link;
 }
 
 export async function signOutAction() {

@@ -1,31 +1,22 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { bootstrapOwnerInvite } from './actions';
+import { bootstrapOwnerAccess } from './actions';
 
 export default function BootstrapButton() {
   const [isPending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleClick() {
     setError(null);
     startTransition(async () => {
       try {
-        await bootstrapOwnerInvite();
-        setDone(true);
+        const link = await bootstrapOwnerAccess();
+        window.location.href = link;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to send invite.');
+        setError(err instanceof Error ? err.message : 'Failed to get an access link.');
       }
     });
-  }
-
-  if (done) {
-    return (
-      <p className="text-sm text-green-700">
-        Invite sent — check your email and follow the link to set your password.
-      </p>
-    );
   }
 
   return (
@@ -34,9 +25,9 @@ export default function BootstrapButton() {
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="w-full rounded-lg bg-ink py-2 text-cream transition hover:opacity-90 disabled:opacity-50"
+        className="w-full rounded-lg border border-ink/15 py-2 text-sm hover:bg-ink/5 disabled:opacity-50"
       >
-        {isPending ? 'Sending...' : 'Send me an invite'}
+        {isPending ? 'Getting link...' : "I'm the owner — get me in"}
       </button>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
