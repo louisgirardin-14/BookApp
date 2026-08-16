@@ -31,9 +31,6 @@ export default function ExportPage() {
   const [customTo, setCustomTo] = useState(toISO(new Date()));
   const [themeId, setThemeId] = useState<ThemeId>('cream');
   const [layout, setLayout] = useState<LayoutId>('grid');
-  const [handwrittenTitle, setHandwrittenTitle] = useState(false);
-  const [poeticCaption, setPoeticCaption] = useState(false);
-  const [scrapbookPhotos, setScrapbookPhotos] = useState(false);
   const [books, setBooks] = useState<Book[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +61,6 @@ export default function ExportPage() {
           layout,
           title,
           subtitle: `${count} ${count === 1 ? 'book' : 'books'}`,
-          handwrittenTitle,
-          poeticCaption,
-          scrapbookPhotos: scrapbookPhotos && layout === 'grid',
         });
       }
     } catch (err) {
@@ -113,13 +107,6 @@ export default function ExportPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Playfair+Display:ital@1&display=swap"
-        rel="stylesheet"
-      />
-
       <h1 className="text-2xl font-semibold">Export</h1>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -181,37 +168,6 @@ export default function ExportPage() {
               {t.label}
             </button>
           ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-2 block text-xs font-medium text-ink/60">Bookish touches</label>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={handwrittenTitle}
-              onChange={(e) => setHandwrittenTitle(e.target.checked)}
-            />
-            Handwritten title
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={poeticCaption}
-              onChange={(e) => setPoeticCaption(e.target.checked)}
-            />
-            Poetic caption
-          </label>
-          <label className={`flex items-center gap-2 ${layout !== 'grid' ? 'opacity-40' : ''}`}>
-            <input
-              type="checkbox"
-              checked={scrapbookPhotos}
-              disabled={layout !== 'grid'}
-              onChange={(e) => setScrapbookPhotos(e.target.checked)}
-            />
-            Scrapbook photos {layout !== 'grid' && '(grid only)'}
-          </label>
         </div>
       </div>
 

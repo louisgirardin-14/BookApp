@@ -14,39 +14,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-const HANDWRITTEN_FONT = 'Caveat';
-const POETIC_FONT = 'Playfair Display';
-
-let fontsReady: Promise<void> | null = null;
-
-// The decorative fonts are linked via <link> on the Export page; canvas
-// text silently falls back to a default font unless the exact style is
-// already loaded at draw time, so this must be awaited first.
-function ensureDecorativeFontsLoaded(): Promise<void> {
-  if (typeof document === 'undefined') return Promise.resolve();
-  if (!fontsReady) {
-    fontsReady = Promise.all([
-      document.fonts.load(`700 56px "${HANDWRITTEN_FONT}"`),
-      document.fonts.load(`italic 400 24px "${POETIC_FONT}"`),
-    ]).then(() => undefined);
-  }
-  return fontsReady;
-}
-
-const POETIC_CAPTIONS = [
-  'a few more chapters of you',
-  'stories that stayed with me',
-  'pages turned, worlds found',
-  'quiet hours, good books',
-  'between the covers',
-  'this season in words',
-  'a little softer with every page',
-];
-
-function pickCaption() {
-  return POETIC_CAPTIONS[Math.floor(Math.random() * POETIC_CAPTIONS.length)];
-}
-
 function drawCoverFit(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -82,66 +49,6 @@ function drawCoverFit(
     dy = y - (drawH - h) / 2;
   }
   ctx.drawImage(img, dx, dy, drawW, drawH);
-  ctx.restore();
-}
-
-// A tilted, white-bordered "polaroid" card with a soft drop shadow --
-// the scrapbook/bookstagram look, in place of a clean rounded rect.
-function drawScrapbookCard(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  rotationDeg: number
-) {
-  const cx = x + w / 2;
-  const cy = y + h / 2;
-  const borderSide = Math.min(14, w * 0.06);
-  const borderTop = borderSide;
-  const borderBottom = Math.min(36, h * 0.14);
-
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate((rotationDeg * Math.PI) / 180);
-  ctx.translate(-cx, -cy);
-
-  ctx.save();
-  ctx.shadowColor = 'rgba(30, 20, 15, 0.28)';
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 8;
-  ctx.fillStyle = '#fffdfb';
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
-
-  const imgX = x + borderSide;
-  const imgY = y + borderTop;
-  const imgW = w - borderSide * 2;
-  const imgH = h - borderTop - borderBottom;
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(imgX, imgY, imgW, imgH);
-  ctx.clip();
-  const imgRatio = img.width / img.height;
-  const boxRatio = imgW / imgH;
-  let drawW = imgW;
-  let drawH = imgH;
-  let dx = imgX;
-  let dy = imgY;
-  if (imgRatio > boxRatio) {
-    drawH = imgH;
-    drawW = imgH * imgRatio;
-    dx = imgX - (drawW - imgW) / 2;
-  } else {
-    drawW = imgW;
-    drawH = imgW / imgRatio;
-    dy = imgY - (drawH - imgH) / 2;
-  }
-  ctx.drawImage(img, dx, dy, drawW, drawH);
-  ctx.restore();
-
   ctx.restore();
 }
 
@@ -235,9 +142,6 @@ export interface RenderExportOptions {
   layout: LayoutId;
   title: string;
   subtitle: string;
-  handwrittenTitle?: boolean;
-  poeticCaption?: boolean;
-  scrapbookPhotos?: boolean;
 }
 
 export async function renderExportCanvas(
@@ -250,10 +154,6 @@ export async function renderExportCanvas(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas not supported');
 
-  if (opts.handwrittenTitle || opts.poeticCaption) {
-    await ensureDecorativeFontsLoaded();
-  }
-
   ctx.fillStyle = opts.theme.background;
   ctx.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
 
@@ -262,26 +162,15 @@ export async function renderExportCanvas(
 
   ctx.textBaseline = 'top';
   ctx.fillStyle = opts.theme.textColor;
-  if (opts.handwrittenTitle) {
-    ctx.font = `700 58px "${HANDWRITTEN_FONT}", cursive`;
-    ctx.fillText(opts.title, margin, margin - 6);
-  } else {
-    ctx.font = '700 36px system-ui, -apple-system, sans-serif';
-    ctx.fillText(opts.title, margin, margin);
-  }
+  ctx.font = '700 36px system-ui, -apple-system, sans-serif';
+  ctx.fillText(opts.title, margin, margin);
 
-  const titleBottom = opts.handwrittenTitle ? margin + 46 : margin + 44;
-
-  if (opts.poeticCaption) {
-    ctx.fillStyle = opts.theme.accentColor;
-    ctx.font = `italic 400 22px "${POETIC_FONT}", Georgia, serif`;
-    ctx.fillText(pickCaption(), margin, titleBottom);
-  } else if (opts.layout !== 'spines') {
-    // The spines layout tells its own story through the timeline below --
-    // a book count here reads as a cold stat rather than a keepsake.
+  // The spines layout tells its own story through the timeline below --
+  // a book count here reads as a cold stat rather than a keepsake.
+  if (opts.layout !== 'spines') {
     ctx.fillStyle = opts.theme.mutedColor;
     ctx.font = '400 22px system-ui, -apple-system, sans-serif';
-    ctx.fillText(opts.subtitle, margin, titleBottom);
+    ctx.fillText(opts.subtitle, margin, margin + 52);
   }
 
   const hasTimeline = opts.layout === 'spines' && books.length > 0;
@@ -330,12 +219,7 @@ export async function renderExportCanvas(
       const row = Math.floor(i / cols);
       const x = margin + col * (cellW + gap);
       const y = yOffset + row * (cellH + gap);
-      if (opts.scrapbookPhotos) {
-        const rotation = (i % 2 === 0 ? 1 : -1) * (3 + (i % 3) * 1.5);
-        drawScrapbookCard(ctx, img!, x, y, cellW, cellH, rotation);
-      } else {
-        drawCoverFit(ctx, img!, x, y, cellW, cellH, 10);
-      }
+      drawCoverFit(ctx, img!, x, y, cellW, cellH, 10);
     });
   } else {
     // Edge-to-edge "spine wall": no gaps, no rounding, full-bleed across the row.
