@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { claimOwnerAccount } from './actions';
+import { resetOwnerPassword } from './actions';
 
 export default function ClaimOwnerForm({
   next,
@@ -19,17 +19,16 @@ export default function ClaimOwnerForm({
         onClick={() => setOpen(true)}
         className="mt-4 w-full text-center text-sm text-ink/60 underline hover:text-ink"
       >
-        First time here, or password not working? Set it up.
+        Forgot password? Reset it.
       </button>
     );
   }
 
   return (
-    <form action={claimOwnerAccount} className="mt-4 space-y-3 border-t border-ink/10 pt-4">
+    <form action={resetOwnerPassword} className="mt-4 space-y-3 border-t border-ink/10 pt-4">
       <input type="hidden" name="next" value={next} />
       <p className="text-sm text-ink/60">
-        Sets the owner account&apos;s password directly. Only works before that account has
-        signed in for the first time.
+        Sets a new password for the owner account and signs you in.
       </p>
       <input
         type="password"

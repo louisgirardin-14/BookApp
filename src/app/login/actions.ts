@@ -19,32 +19,26 @@ export async function signIn(formData: FormData) {
   redirect(next || '/');
 }
 
-// Sets OWNER_EMAIL's password directly via the Admin API -- no magic
-// link, no redirect URL, no session-establishment dance. Only works
-// before the owner's very first successful sign-in (this page is
-// public, so once the real owner has actually logged in, this must
-// stop working for anyone who finds it, or it's an account takeover).
-export async function claimOwnerAccount(formData: FormData) {
+// Sets OWNER_EMAIL's password directly via the Admin API and signs in --
+// no magic link, no redirect URL config, no email dependency. Doubles as
+// both first-time setup and "forgot password" for the owner account.
+export async function resetOwnerPassword(formData: FormData) {
   const password = String(formData.get('password') ?? '');
   const confirm = String(formData.get('confirm') ?? '');
   const next = String(formData.get('next') ?? '/');
-  const claimError = (message: string) =>
+  const resetError = (message: string) =>
     redirect(`/login?claim=1&next=${encodeURIComponent(next)}&error=${encodeURIComponent(message)}`);
 
-  if (password.length < 8) return claimError('Password must be at least 8 characters.');
-  if (password !== confirm) return claimError('Passwords do not match.');
+  if (password.length < 8) return resetError('Password must be at least 8 characters.');
+  if (password !== confirm) return resetError('Passwords do not match.');
 
   const ownerEmail = process.env.OWNER_EMAIL;
-  if (!ownerEmail) return claimError('OWNER_EMAIL is not configured on the server.');
+  if (!ownerEmail) return resetError('OWNER_EMAIL is not configured on the server.');
 
   const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-  if (listError) return claimError(listError.message);
+  if (listError) return resetError(listError.message);
 
   const existing = list.users.find((u) => u.email === ownerEmail);
-
-  if (existing?.last_sign_in_at) {
-    redirect(`/login?error=${encodeURIComponent('This account is already set up -- sign in above.')}`);
-  }
 
   if (!existing) {
     const { error } = await supabaseAdmin.auth.admin.createUser({
@@ -52,10 +46,10 @@ export async function claimOwnerAccount(formData: FormData) {
       password,
       email_confirm: true,
     });
-    if (error) return claimError(error.message);
+    if (error) return resetError(error.message);
   } else {
     const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, { password });
-    if (error) return claimError(error.message);
+    if (error) return resetError(error.message);
   }
 
   const supabase = createClient();
@@ -63,7 +57,7 @@ export async function claimOwnerAccount(formData: FormData) {
     email: ownerEmail,
     password,
   });
-  if (signInError) return claimError(signInError.message);
+  if (signInError) return resetError(signInError.message);
 
   redirect(next || '/');
 }

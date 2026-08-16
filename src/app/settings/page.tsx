@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { signOutAction } from './actions';
 import VisibilityToggle from './VisibilityToggle';
 import InviteFriendForm from './InviteFriendForm';
+import ChangePasswordForm from './ChangePasswordForm';
 import DeleteAccountButton from './DeleteAccountButton';
 
 export default async function SettingsPage() {
@@ -34,6 +35,11 @@ export default async function SettingsPage() {
             Sign out
           </button>
         </form>
+      </section>
+
+      <section className="space-y-2 border-t border-ink/10 pt-6">
+        <h2 className="text-sm font-medium">Change password</h2>
+        <ChangePasswordForm />
       </section>
 
       <section className="space-y-2 border-t border-ink/10 pt-6">

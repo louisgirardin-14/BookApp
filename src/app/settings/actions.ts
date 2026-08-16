@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -18,18 +17,22 @@ export async function updateVisibility(isPublic: boolean) {
   revalidatePath('/settings');
 }
 
-function siteOrigin() {
-  const host = headers().get('host')!;
-  const protocol = host.startsWith('localhost') ? 'http' : 'https';
-  return `${protocol}://${host}`;
+function randomPassword(length = 12) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let out = '';
+  for (let i = 0; i < length; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
 }
 
 // Owner-only: invite-only signup means new accounts can only be created
-// this way, by the account whose email matches OWNER_EMAIL. Returns the
-// invite link directly (rather than relying solely on Supabase's shared
-// email sending, which can be slow or filtered) so the owner can also
-// just text/message it to their friend.
-export async function inviteFriend(email: string): Promise<string> {
+// this way, by the account whose email matches OWNER_EMAIL. Creates (or
+// resets) the account with a random temporary password set directly via
+// the Admin API -- no magic link, no email dependency. The owner relays
+// the email + password to their friend directly (text, WhatsApp, etc.);
+// the friend can change it after logging in.
+export async function inviteFriend(email: string): Promise<{ email: string; password: string }> {
   const supabase = createClient();
   const {
     data: { user },
@@ -38,13 +41,39 @@ export async function inviteFriend(email: string): Promise<string> {
     throw new Error('Only the owner can invite people.');
   }
 
-  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'invite',
-    email,
-    options: { redirectTo: `${siteOrigin()}/auth/set-password` },
-  });
+  const trimmedEmail = email.trim();
+  const password = randomPassword();
+
+  const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+  if (listError) throw new Error(listError.message);
+  const existing = list.users.find((u) => u.email === trimmedEmail);
+
+  if (existing) {
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, { password });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabaseAdmin.auth.admin.createUser({
+      email: trimmedEmail,
+      password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  return { email: trimmedEmail, password };
+}
+
+// Lets any logged-in account change its own password.
+export async function changeOwnPassword(newPassword: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in.');
+  if (newPassword.length < 8) throw new Error('Password must be at least 8 characters.');
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw new Error(error.message);
-  return data.properties.action_link;
 }
 
 export async function signOutAction() {
