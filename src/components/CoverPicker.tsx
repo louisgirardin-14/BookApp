@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { CoverCandidate, CoverSource } from '@/lib/types';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 import CameraCapture from './CameraCapture';
 import AutoCropStage from './AutoCropStage';
 
@@ -34,6 +35,7 @@ export default function CoverPicker({
   photoButtonLabel?: string;
   onSelected: (result: CoverPickResult) => void;
 }) {
+  const { dict } = useLocale();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<CoverCandidate[]>([]);
@@ -55,10 +57,10 @@ export default function CoverPicker({
       const data = await res.json();
       setResults(data.results ?? []);
       if (!data.results?.length) {
-        setSearchError('No covers found. You can take a photo instead.');
+        setSearchError(dict.coverPicker.noCoversFound);
       }
     } catch {
-      setSearchError('Search failed. Try again.');
+      setSearchError(dict.coverPicker.searchFailed);
     } finally {
       setSearching(false);
     }
@@ -86,7 +88,7 @@ export default function CoverPicker({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Title, author, or ISBN"
+              placeholder={dict.coverPicker.searchPlaceholder}
               className="flex-1 rounded-lg border border-ink/15 px-3 py-2"
             />
             <button
@@ -94,7 +96,7 @@ export default function CoverPicker({
               disabled={searching}
               className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90 disabled:opacity-50"
             >
-              {searching ? 'Searching...' : 'Search'}
+              {searching ? dict.coverPicker.searching : dict.coverPicker.search}
             </button>
           </form>
 
@@ -137,7 +139,8 @@ export default function CoverPicker({
             onClick={() => setFlow('camera')}
             className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
           >
-            {photoButtonLabel ?? (hideSearch ? 'Take a photo' : 'No cover found — take a photo')}
+            {photoButtonLabel ??
+              (hideSearch ? dict.coverPicker.takeAPhoto : dict.coverPicker.noCoverFoundTakePhoto)}
           </button>
         )}
         {flow === 'camera' && (

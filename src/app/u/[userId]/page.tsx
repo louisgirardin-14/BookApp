@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getDictionary } from '@/lib/i18n/getLocale';
 import type { Book } from '@/lib/types';
 import BookCard from '@/components/BookCard';
 
@@ -11,6 +12,8 @@ export default async function PublicShelfPage({ params }: { params: { userId: st
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  const dict = getDictionary();
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -29,13 +32,13 @@ export default async function PublicShelfPage({ params }: { params: { userId: st
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{profile.email}&apos;s shelf</h1>
-        <p className="text-sm text-ink/60">Read-only</p>
+        <h1 className="text-2xl font-semibold">{dict.publicShelf.shelfHeading(profile.email ?? '')}</h1>
+        <p className="text-sm text-ink/60">{dict.publicShelf.readOnly}</p>
       </div>
 
       {!books || books.length === 0 ? (
         <div className="rounded-xl border border-dashed border-ink/20 p-12 text-center text-ink/60">
-          <p>No books yet.</p>
+          <p>{dict.publicShelf.noBooksYet}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">

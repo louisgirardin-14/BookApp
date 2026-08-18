@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getDictionary } from '@/lib/i18n/getLocale';
 import { signOutAction } from './actions';
 import VisibilityToggle from './VisibilityToggle';
 import InviteFriendForm from './InviteFriendForm';
@@ -13,6 +14,8 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  const dict = getDictionary();
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -34,59 +37,52 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+      <h1 className="text-2xl font-semibold">{dict.settings.heading}</h1>
 
       <section className="space-y-2">
-        <p className="text-sm text-ink/60">Signed in as {user.email}</p>
+        <p className="text-sm text-ink/60">
+          {dict.settings.signedInAs} {user.email}
+        </p>
         <form action={signOutAction}>
           <button
             type="submit"
             className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
           >
-            Sign out
+            {dict.settings.signOut}
           </button>
         </form>
       </section>
 
       <section className="space-y-2 border-t border-ink/10 pt-6">
-        <h2 className="text-sm font-medium">Change password</h2>
+        <h2 className="text-sm font-medium">{dict.settings.changePassword}</h2>
         <ChangePasswordForm />
       </section>
 
       <section className="space-y-2 border-t border-ink/10 pt-6">
-        <h2 className="text-sm font-medium">Shelf visibility</h2>
-        <p className="text-sm text-ink/60">
-          Public shelves can be viewed (read-only) by other accounts on this app, like an
-          Instagram profile.
-        </p>
+        <h2 className="text-sm font-medium">{dict.settings.shelfVisibility}</h2>
+        <p className="text-sm text-ink/60">{dict.settings.shelfVisibilityDescription}</p>
         <VisibilityToggle initialIsPublic={profile?.is_public ?? false} />
       </section>
 
       {isOwner && (
         <section className="space-y-2 border-t border-ink/10 pt-6">
-          <h2 className="text-sm font-medium">Invite a friend</h2>
-          <p className="text-sm text-ink/60">
-            Signup is invite-only. Only your account can send invites.
-          </p>
+          <h2 className="text-sm font-medium">{dict.settings.inviteAFriend}</h2>
+          <p className="text-sm text-ink/60">{dict.settings.inviteDescription}</p>
           <InviteFriendForm />
         </section>
       )}
 
       {isOwner && (
         <section className="space-y-2 border-t border-ink/10 pt-6">
-          <h2 className="text-sm font-medium">Manage accounts</h2>
-          <p className="text-sm text-ink/60">
-            Permanently removes an account, their books, and their photos.
-          </p>
+          <h2 className="text-sm font-medium">{dict.settings.manageAccounts}</h2>
+          <p className="text-sm text-ink/60">{dict.settings.manageAccountsDescription}</p>
           <ManageAccountsSection accounts={otherAccounts} />
         </section>
       )}
 
       <section className="space-y-2 border-t border-ink/10 pt-6">
-        <h2 className="text-sm font-medium text-red-600">Danger zone</h2>
-        <p className="text-sm text-ink/60">
-          Permanently deletes your account, books, and photos. This cannot be undone.
-        </p>
+        <h2 className="text-sm font-medium text-red-600">{dict.settings.dangerZone}</h2>
+        <p className="text-sm text-ink/60">{dict.settings.deleteAccountDescription}</p>
         <DeleteAccountButton />
       </section>
     </div>

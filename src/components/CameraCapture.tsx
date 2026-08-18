@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 export default function CameraCapture({
   onCapture,
@@ -9,6 +10,7 @@ export default function CameraCapture({
   onCapture: (dataUrl: string) => void;
   onCancel: () => void;
 }) {
+  const { dict } = useLocale();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +27,13 @@ export default function CameraCapture({
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
       })
-      .catch(() => setError('Could not access the camera. Check permissions.'));
+      .catch(() => setError(dict.camera.cameraError));
 
     return () => {
       cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [dict.camera.cameraError]);
 
   function capture() {
     const video = videoRef.current;
@@ -60,14 +62,14 @@ export default function CameraCapture({
           disabled={!!error}
           className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90 disabled:opacity-50"
         >
-          Capture
+          {dict.camera.capture}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
         >
-          Cancel
+          {dict.camera.cancel}
         </button>
       </div>
     </div>

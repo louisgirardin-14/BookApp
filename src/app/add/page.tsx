@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CoverSource } from '@/lib/types';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 import StarRating from '@/components/StarRating';
 import CoverPicker, { type CoverPickResult } from '@/components/CoverPicker';
 import { addBook, mirrorCoverImage, uploadCoverImage } from '@/app/actions';
@@ -13,6 +14,7 @@ function todayISO() {
 
 export default function AddBookPage() {
   const router = useRouter();
+  const { dict } = useLocale();
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverSource, setCoverSource] = useState<CoverSource | null>(null);
@@ -45,7 +47,7 @@ export default function AddBookPage() {
   async function save() {
     if (!coverUrl || !coverSource) return;
     if (!form.title.trim() || !form.author.trim()) {
-      setSaveError('Title and author are required.');
+      setSaveError(dict.addBook.titleAuthorRequired);
       return;
     }
     setSaving(true);
@@ -71,7 +73,7 @@ export default function AddBookPage() {
       });
       router.push(`/book/${id}`);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save.');
+      setSaveError(err instanceof Error ? err.message : dict.addBook.failedToSave);
     } finally {
       setSaving(false);
     }
@@ -79,7 +81,7 @@ export default function AddBookPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <h1 className="text-2xl font-semibold">Add a book</h1>
+      <h1 className="text-2xl font-semibold">{dict.addBook.heading}</h1>
 
       {!coverUrl && <CoverPicker onSelected={onCoverSelected} />}
 
@@ -88,7 +90,11 @@ export default function AddBookPage() {
           <div className="flex items-start gap-4">
             <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-lg border border-ink/10 bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverUrl} alt="Selected cover" className="h-full w-full object-cover" />
+              <img
+                src={coverUrl}
+                alt={dict.addBook.selectedCoverAlt}
+                className="h-full w-full object-cover"
+              />
             </div>
             <button
               type="button"
@@ -98,12 +104,14 @@ export default function AddBookPage() {
               }}
               className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
             >
-              Change cover
+              {dict.addBook.changeCover}
             </button>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-ink/60">Title</label>
+            <label className="mb-1 block text-xs font-medium text-ink/60">
+              {dict.addBook.titleLabel}
+            </label>
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -111,7 +119,9 @@ export default function AddBookPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-ink/60">Author</label>
+            <label className="mb-1 block text-xs font-medium text-ink/60">
+              {dict.addBook.authorLabel}
+            </label>
             <input
               value={form.author}
               onChange={(e) => setForm({ ...form, author: e.target.value })}
@@ -119,7 +129,9 @@ export default function AddBookPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-ink/60">ISBN (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-ink/60">
+              {dict.addBook.isbnLabel}
+            </label>
             <input
               value={form.isbn}
               onChange={(e) => setForm({ ...form, isbn: e.target.value })}
@@ -127,7 +139,9 @@ export default function AddBookPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-ink/60">Date read</label>
+            <label className="mb-1 block text-xs font-medium text-ink/60">
+              {dict.addBook.dateReadLabel}
+            </label>
             <input
               type="date"
               value={form.date_read}
@@ -136,11 +150,15 @@ export default function AddBookPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-ink/60">Rating (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-ink/60">
+              {dict.addBook.ratingLabel}
+            </label>
             <StarRating value={form.rating} onChange={(rating) => setForm({ ...form, rating })} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-ink/60">Notes (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-ink/60">
+              {dict.addBook.notesLabel}
+            </label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -157,7 +175,7 @@ export default function AddBookPage() {
             disabled={saving}
             className="rounded-lg bg-ink px-5 py-2.5 text-sm text-cream hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save to shelf'}
+            {saving ? dict.addBook.saving : dict.addBook.saveToShelf}
           </button>
         </section>
       )}

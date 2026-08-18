@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { getCroppedImageDataUrl } from '@/lib/cropImage';
 
 export default function ManualCropper({
@@ -17,6 +18,7 @@ export default function ManualCropper({
   onConfirm: (dataUrl: string) => void;
   onCancel: () => void;
 }) {
+  const { dict } = useLocale();
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   // Rotation is split into 90-degree orientation turns (for a sideways or
@@ -70,7 +72,7 @@ export default function ManualCropper({
           className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
           aria-label="Rotate left 90 degrees"
         >
-          ⟲ Rotate
+          {dict.crop.rotateLeft}
         </button>
         <button
           type="button"
@@ -78,11 +80,11 @@ export default function ManualCropper({
           className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
           aria-label="Rotate right 90 degrees"
         >
-          ⟳ Rotate
+          {dict.crop.rotateRight}
         </button>
       </div>
 
-      <label className="mt-3 block text-xs font-medium text-ink/60">Zoom</label>
+      <label className="mt-3 block text-xs font-medium text-ink/60">{dict.crop.zoom}</label>
       <input
         type="range"
         min={1}
@@ -93,7 +95,7 @@ export default function ManualCropper({
         className="w-full"
       />
 
-      <label className="mt-2 block text-xs font-medium text-ink/60">Straighten</label>
+      <label className="mt-2 block text-xs font-medium text-ink/60">{dict.crop.straighten}</label>
       <input
         type="range"
         min={-45}
@@ -111,14 +113,14 @@ export default function ManualCropper({
           disabled={busy}
           className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90 disabled:opacity-50"
         >
-          Use this crop
+          {dict.crop.useThisCrop}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
         >
-          Back
+          {dict.crop.back}
         </button>
       </div>
     </div>

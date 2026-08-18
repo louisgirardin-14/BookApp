@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getDictionary } from '@/lib/i18n/getLocale';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,8 @@ export default async function ExplorePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  const dict = getDictionary();
+
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, email')
@@ -20,12 +23,12 @@ export default async function ExplorePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <h1 className="text-2xl font-semibold">Explore</h1>
-      <p className="text-sm text-ink/60">Public shelves from other accounts, read-only.</p>
+      <h1 className="text-2xl font-semibold">{dict.explore.heading}</h1>
+      <p className="text-sm text-ink/60">{dict.explore.subtitle}</p>
 
       {!profiles || profiles.length === 0 ? (
         <p className="rounded-xl border border-dashed border-ink/20 p-8 text-center text-sm text-ink/60">
-          Nobody has made their shelf public yet.
+          {dict.explore.nobodyPublic}
         </p>
       ) : (
         <ul className="divide-y divide-ink/10 rounded-xl border border-ink/10 bg-white">

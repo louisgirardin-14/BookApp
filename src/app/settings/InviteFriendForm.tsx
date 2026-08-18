@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { inviteFriend } from './actions';
 
 export default function InviteFriendForm() {
+  const { dict } = useLocale();
   const [email, setEmail] = useState('');
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ email: string; password: string } | null>(null);
@@ -20,7 +22,7 @@ export default function InviteFriendForm() {
         const created = await inviteFriend(email);
         setResult(created);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create account.');
+        setError(err instanceof Error ? err.message : dict.settings.failedToCreateAccount);
       }
     });
   }
@@ -40,7 +42,7 @@ export default function InviteFriendForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="friend@example.com"
+          placeholder={dict.settings.friendEmailPlaceholder}
           required
           className="flex-1 rounded-lg border border-ink/15 px-3 py-2 text-sm"
         />
@@ -49,16 +51,13 @@ export default function InviteFriendForm() {
           disabled={isPending}
           className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90 disabled:opacity-50"
         >
-          {isPending ? 'Creating...' : 'Invite'}
+          {isPending ? dict.settings.creating : dict.settings.invite}
         </button>
       </form>
 
       {result && (
         <div className="mt-3 space-y-2 rounded-lg border border-ink/10 bg-cream p-3">
-          <p className="text-sm text-ink/60">
-            Send these to your friend directly (text, WhatsApp, etc.) — they can change the
-            password after logging in.
-          </p>
+          <p className="text-sm text-ink/60">{dict.settings.sendCredentialsDescription}</p>
           <p className="rounded border border-ink/10 bg-white p-2 text-xs">
             Email: {result.email}
             <br />
@@ -69,7 +68,7 @@ export default function InviteFriendForm() {
             onClick={copyCredentials}
             className="rounded-lg border border-ink/15 px-3 py-1.5 text-sm hover:bg-ink/5"
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? dict.settings.copied : dict.settings.copy}
           </button>
         </div>
       )}

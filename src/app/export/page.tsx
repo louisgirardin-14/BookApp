@@ -6,6 +6,7 @@ import { EXPORT_THEMES, EXPORT_WIDTH, EXPORT_HEIGHT, type ThemeId, type LayoutId
 import { TIMELINE_THEMES, type TimelineThemeId } from '@/lib/timelineThemes';
 import { renderExportCanvas } from '@/lib/renderExport';
 import type { ConnectorStyle } from '@/lib/timelinePath';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 type RangeMode = 'this-month' | 'last-month' | 'custom';
 
@@ -13,18 +14,8 @@ function toISO(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function monthRange(offset: number) {
-  const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-  const to = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
-  return {
-    from: toISO(from),
-    to: toISO(to),
-    title: `${from.toLocaleString('en-US', { month: 'long' })} Reads`,
-  };
-}
-
 export default function ExportPage() {
+  const { dict, locale } = useLocale();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [rangeMode, setRangeMode] = useState<RangeMode>('this-month');
   const [customFrom, setCustomFrom] = useState(
@@ -39,10 +30,23 @@ export default function ExportPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function monthRange(offset: number) {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+    return {
+      from: toISO(from),
+      to: toISO(to),
+      title: dict.export.monthReads(
+        from.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' })
+      ),
+    };
+  }
+
   function currentRange() {
     if (rangeMode === 'this-month') return monthRange(0);
     if (rangeMode === 'last-month') return monthRange(-1);
-    return { from: customFrom, to: customTo, title: 'Reading' };
+    return { from: customFrom, to: customTo, title: dict.export.reading };
   }
 
   // The Timeline layout is rendered server-side via Satori (next/og) --
@@ -61,7 +65,7 @@ export default function ExportPage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      throw new Error(data?.error ?? 'Failed to generate timeline image.');
+      throw new Error(data?.error ?? dict.export.failedToGenerate);
     }
     const blob = await res.blob();
     const bitmap = await createImageBitmap(blob);
@@ -95,11 +99,11 @@ export default function ExportPage() {
           theme,
           layout,
           title,
-          subtitle: `${count} ${count === 1 ? 'book' : 'books'}`,
+          subtitle: `${count} ${count === 1 ? dict.export.book : dict.export.books}`,
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate export.');
+      setError(err instanceof Error ? err.message : dict.export.failedToGenerate);
     } finally {
       setBusy(false);
     }
@@ -142,19 +146,19 @@ export default function ExportPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold">Export</h1>
+      <h1 className="text-2xl font-semibold">{dict.export.heading}</h1>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink/60">Date range</label>
+          <label className="mb-1 block text-xs font-medium text-ink/60">{dict.export.dateRange}</label>
           <select
             value={rangeMode}
             onChange={(e) => setRangeMode(e.target.value as RangeMode)}
             className="w-full rounded-lg border border-ink/15 px-3 py-2"
           >
-            <option value="this-month">This month</option>
-            <option value="last-month">Last month</option>
-            <option value="custom">Custom range</option>
+            <option value="this-month">{dict.export.thisMonth}</option>
+            <option value="last-month">{dict.export.lastMonth}</option>
+            <option value="custom">{dict.export.customRange}</option>
           </select>
           {rangeMode === 'custom' && (
             <div className="mt-2 flex gap-2">
@@ -175,36 +179,36 @@ export default function ExportPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink/60">Layout</label>
+          <label className="mb-1 block text-xs font-medium text-ink/60">{dict.export.layout}</label>
           <select
             value={layout}
             onChange={(e) => setLayout(e.target.value as LayoutId)}
             className="w-full rounded-lg border border-ink/15 px-3 py-2"
           >
-            <option value="grid">Grid of covers</option>
-            <option value="spines">Spines</option>
-            <option value="timeline">Timeline (winding path)</option>
+            <option value="grid">{dict.export.gridOfCovers}</option>
+            <option value="spines">{dict.export.spines}</option>
+            <option value="timeline">{dict.export.timeline}</option>
           </select>
         </div>
       </div>
 
       {layout === 'timeline' && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink/60">Connector</label>
+          <label className="mb-1 block text-xs font-medium text-ink/60">{dict.export.connector}</label>
           <select
             value={connectorStyle}
             onChange={(e) => setConnectorStyle(e.target.value as ConnectorStyle)}
             className="w-full rounded-lg border border-ink/15 px-3 py-2 sm:w-56"
           >
-            <option value="wave">Wave</option>
-            <option value="zigzag">Zigzag</option>
-            <option value="straight">Straight</option>
+            <option value="wave">{dict.export.wave}</option>
+            <option value="zigzag">{dict.export.zigzag}</option>
+            <option value="straight">{dict.export.straight}</option>
           </select>
         </div>
       )}
 
       <div>
-        <label className="mb-2 block text-xs font-medium text-ink/60">Theme</label>
+        <label className="mb-2 block text-xs font-medium text-ink/60">{dict.export.theme}</label>
         <div className="flex flex-wrap gap-3">
           {layout === 'timeline'
             ? TIMELINE_THEMES.map((t) => (
@@ -243,7 +247,7 @@ export default function ExportPage() {
           disabled={busy}
           className="rounded-lg bg-ink px-4 py-2 text-sm text-cream hover:opacity-90 disabled:opacity-50"
         >
-          {busy ? 'Generating...' : 'Generate preview'}
+          {busy ? dict.export.generating : dict.export.generatePreview}
         </button>
         {books && books.length > 0 && (
           <button
@@ -251,7 +255,7 @@ export default function ExportPage() {
             onClick={saveImage}
             className="rounded-lg border border-ink/15 px-4 py-2 text-sm hover:bg-ink/5"
           >
-            Save / Share
+            {dict.export.saveShare}
           </button>
         )}
       </div>

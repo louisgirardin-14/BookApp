@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { updateVisibility } from './actions';
 
 export default function VisibilityToggle({ initialIsPublic }: { initialIsPublic: boolean }) {
+  const { dict } = useLocale();
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [isPending, startTransition] = useTransition();
 
@@ -24,7 +26,7 @@ export default function VisibilityToggle({ initialIsPublic }: { initialIsPublic:
         isPublic ? 'border-ink bg-ink text-cream' : 'border-ink/15 hover:bg-ink/5'
       }`}
     >
-      {isPublic ? 'Public — anyone signed in can view (read-only)' : 'Private — only you can see it'}
+      {isPublic ? dict.settings.public : dict.settings.private}
     </button>
   );
 }
