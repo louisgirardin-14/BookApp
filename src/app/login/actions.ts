@@ -48,7 +48,10 @@ export async function resetOwnerPassword(formData: FormData) {
     });
     if (error) return resetError(error.message);
   } else {
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, { password });
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+      password,
+      email_confirm: true,
+    });
     if (error) return resetError(error.message);
   }
 

@@ -49,7 +49,10 @@ export async function inviteFriend(email: string): Promise<{ email: string; pass
   const existing = list.users.find((u) => u.email === trimmedEmail);
 
   if (existing) {
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, { password });
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+      password,
+      email_confirm: true,
+    });
     if (error) throw new Error(error.message);
   } else {
     const { error } = await supabaseAdmin.auth.admin.createUser({
