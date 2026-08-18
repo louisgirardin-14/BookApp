@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import type { Book } from '@/lib/types';
 import { EXPORT_THEMES, EXPORT_WIDTH, EXPORT_HEIGHT, type ThemeId, type LayoutId } from '@/lib/exportThemes';
 import { renderExportCanvas } from '@/lib/renderExport';
+import type { ConnectorStyle } from '@/lib/timelinePath';
 
 type RangeMode = 'this-month' | 'last-month' | 'custom';
 
@@ -31,6 +32,7 @@ export default function ExportPage() {
   const [customTo, setCustomTo] = useState(toISO(new Date()));
   const [themeId, setThemeId] = useState<ThemeId>('cream');
   const [layout, setLayout] = useState<LayoutId>('grid');
+  const [connectorStyle, setConnectorStyle] = useState<ConnectorStyle>('wave');
   const [books, setBooks] = useState<Book[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,34 @@ export default function ExportPage() {
     if (rangeMode === 'this-month') return monthRange(0);
     if (rangeMode === 'last-month') return monthRange(-1);
     return { from: customFrom, to: customTo, title: 'Reading' };
+  }
+
+  // The Timeline layout is rendered server-side via Satori (next/og) --
+  // fetch the PNG and paint it onto the same canvas the rest of the page
+  // treats as the preview/save surface, so Save/Share doesn't need to care
+  // which layout produced the pixels.
+  async function renderTimeline(canvas: HTMLCanvasElement, fetchedBooks: Book[], title: string) {
+    const res = await fetch('/api/export-timeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        books: fetchedBooks.map((b) => ({ cover_url: b.cover_url, date_read: b.date_read })),
+        themeId,
+        title,
+        connectorStyle,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error ?? 'Failed to generate timeline image.');
+    }
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    canvas.width = EXPORT_WIDTH;
+    canvas.height = EXPORT_HEIGHT;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not supported');
+    ctx.drawImage(bitmap, 0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
   }
 
   async function loadAndRender() {
@@ -52,10 +82,14 @@ export default function ExportPage() {
       const fetchedBooks: Book[] = data.books ?? [];
       setBooks(fetchedBooks);
 
-      const theme = EXPORT_THEMES.find((t) => t.id === themeId)!;
       const canvas = canvasRef.current;
-      const count = fetchedBooks.length;
-      if (canvas) {
+      if (!canvas) return;
+
+      if (layout === 'timeline') {
+        await renderTimeline(canvas, fetchedBooks, title);
+      } else {
+        const theme = EXPORT_THEMES.find((t) => t.id === themeId)!;
+        const count = fetchedBooks.length;
         await renderExportCanvas(canvas, fetchedBooks, {
           theme,
           layout,
@@ -148,9 +182,25 @@ export default function ExportPage() {
           >
             <option value="grid">Grid of covers</option>
             <option value="spines">Spines</option>
+            <option value="timeline">Timeline (winding path)</option>
           </select>
         </div>
       </div>
+
+      {layout === 'timeline' && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-ink/60">Connector</label>
+          <select
+            value={connectorStyle}
+            onChange={(e) => setConnectorStyle(e.target.value as ConnectorStyle)}
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 sm:w-56"
+          >
+            <option value="wave">Wave</option>
+            <option value="zigzag">Zigzag</option>
+            <option value="straight">Straight</option>
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="mb-2 block text-xs font-medium text-ink/60">Theme</label>

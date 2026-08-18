@@ -1,5 +1,5 @@
 export type ThemeId = 'cream' | 'dark' | 'kraft';
-export type LayoutId = 'grid' | 'spines';
+export type LayoutId = 'grid' | 'spines' | 'timeline';
 
 export interface ExportTheme {
   id: ThemeId;
