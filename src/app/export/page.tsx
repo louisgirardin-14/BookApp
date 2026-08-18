@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import type { Book } from '@/lib/types';
 import { EXPORT_THEMES, EXPORT_WIDTH, EXPORT_HEIGHT, type ThemeId, type LayoutId } from '@/lib/exportThemes';
+import { TIMELINE_THEMES, type TimelineThemeId } from '@/lib/timelineThemes';
 import { renderExportCanvas } from '@/lib/renderExport';
 import type { ConnectorStyle } from '@/lib/timelinePath';
 
@@ -31,6 +32,7 @@ export default function ExportPage() {
   );
   const [customTo, setCustomTo] = useState(toISO(new Date()));
   const [themeId, setThemeId] = useState<ThemeId>('cream');
+  const [timelineThemeId, setTimelineThemeId] = useState<TimelineThemeId>('mustard');
   const [layout, setLayout] = useState<LayoutId>('grid');
   const [connectorStyle, setConnectorStyle] = useState<ConnectorStyle>('wave');
   const [books, setBooks] = useState<Book[] | null>(null);
@@ -52,8 +54,12 @@ export default function ExportPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        books: fetchedBooks.map((b) => ({ cover_url: b.cover_url, date_read: b.date_read })),
-        themeId,
+        books: fetchedBooks.map((b) => ({
+          title: b.title,
+          cover_url: b.cover_url,
+          date_read: b.date_read,
+        })),
+        themeId: timelineThemeId,
         title,
         connectorStyle,
       }),
@@ -204,20 +210,34 @@ export default function ExportPage() {
 
       <div>
         <label className="mb-2 block text-xs font-medium text-ink/60">Theme</label>
-        <div className="flex gap-3">
-          {EXPORT_THEMES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setThemeId(t.id)}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                themeId === t.id ? 'border-ink ring-2 ring-ink/30' : 'border-ink/15'
-              }`}
-              style={{ background: t.background, color: t.textColor }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-3">
+          {layout === 'timeline'
+            ? TIMELINE_THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTimelineThemeId(t.id)}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    timelineThemeId === t.id ? 'border-ink ring-2 ring-ink/30' : 'border-ink/15'
+                  }`}
+                  style={{ background: t.background, color: t.textColor }}
+                >
+                  {t.label}
+                </button>
+              ))
+            : EXPORT_THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setThemeId(t.id)}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    themeId === t.id ? 'border-ink ring-2 ring-ink/30' : 'border-ink/15'
+                  }`}
+                  style={{ background: t.background, color: t.textColor }}
+                >
+                  {t.label}
+                </button>
+              ))}
         </div>
       </div>
 
