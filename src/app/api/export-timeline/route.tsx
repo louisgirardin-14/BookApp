@@ -44,7 +44,6 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     books: BookInput[];
     themeId: TimelineThemeId;
-    title: string;
     connectorStyle: ConnectorStyle;
   };
 
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
   }
 
   const margin = 64;
-  const topY = margin + 150;
+  const topY = margin + 60;
   const bottomY = EXPORT_HEIGHT - margin;
   const centerX = EXPORT_WIDTH / 2;
   const amplitude = 110;
@@ -73,8 +72,8 @@ export async function POST(request: Request) {
   ];
 
   const pathD = buildConnectorPath(points, body.connectorStyle ?? 'wave');
-  const coverW = 76;
-  const coverH = 114;
+  const coverW = 84;
+  const coverH = 126;
 
   return new ImageResponse(
     (
@@ -87,24 +86,11 @@ export async function POST(request: Request) {
           position: 'relative',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            top: margin,
-            left: margin,
-            fontSize: 40,
-            fontWeight: 700,
-            color: theme.textColor,
-            display: 'flex',
-          }}
-        >
-          {body.title}
-        </div>
-
         <svg
           width={EXPORT_WIDTH}
           height={EXPORT_HEIGHT}
-          style={{ position: 'absolute', top: 0, left: 0 }}
+          viewBox={`0 0 ${EXPORT_WIDTH} ${EXPORT_HEIGHT}`}
+          style={{ position: 'absolute', top: 0, left: 0, width: EXPORT_WIDTH, height: EXPORT_HEIGHT }}
         >
           <path d={pathD} stroke={theme.connector} strokeWidth={9} strokeLinecap="round" fill="none" />
           {groups.map((_, i) => {
@@ -132,56 +118,30 @@ export async function POST(request: Request) {
           const point = points[i + 1];
           const onLeft = i % 2 === 0;
           const branchEndX = onLeft ? point.x - branchLength : point.x + branchLength;
-          const textBlockWidth = 190;
-          const textLeft = onLeft ? point.x - 16 - textBlockWidth : point.x + 16;
           const coverCount = Math.min(group.books.length, MAX_COVERS_PER_STOP);
-          const coverBlockWidth = coverCount * coverW + (coverCount - 1) * 8;
-          const coverLeft = onLeft ? branchEndX - coverBlockWidth : branchEndX;
-          const extra = group.books.length - coverCount;
-          const caption =
-            group.books.length > 1
-              ? `${group.books[0].title}${extra > 0 ? ` +${extra} more` : ''}`
-              : group.books[0].title;
-          const trimmedCaption = caption.length > 34 ? `${caption.slice(0, 32)}…` : caption;
+          const blockWidth = coverCount * coverW + (coverCount - 1) * 10;
+          const blockLeft = onLeft ? branchEndX - blockWidth : branchEndX;
+          const blockHeight = coverH + 44;
 
           return (
-            <div key={i} style={{ display: 'flex' }}>
-              <div
-                style={{
-                  position: 'absolute',
-                  top: point.y - 32,
-                  left: textLeft,
-                  width: textBlockWidth,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: onLeft ? 'flex-end' : 'flex-start',
-                }}
-              >
-                <div style={{ fontSize: 30, fontWeight: 700, color: theme.textColor, display: 'flex' }}>
-                  {formatDate(group.date_read)}
-                </div>
-                <div
-                  style={{
-                    fontSize: 15,
-                    color: theme.captionColor,
-                    display: 'flex',
-                    textAlign: onLeft ? 'right' : 'left',
-                  }}
-                >
-                  {trimmedCaption}
-                </div>
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                top: point.y - blockHeight / 2,
+                left: blockLeft,
+                width: blockWidth,
+                height: blockHeight,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <div style={{ fontSize: 26, fontWeight: 700, color: theme.textColor, display: 'flex' }}>
+                {formatDate(group.date_read)}
               </div>
-
-              <div
-                style={{
-                  position: 'absolute',
-                  top: point.y - coverH / 2,
-                  left: coverLeft,
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: 8,
-                }}
-              >
+              <div style={{ display: 'flex', flexDirection: 'row', gap: 10 }}>
                 {group.books.slice(0, MAX_COVERS_PER_STOP).map((b, j) => (
                   <div
                     key={j}

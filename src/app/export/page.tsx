@@ -49,18 +49,13 @@ export default function ExportPage() {
   // fetch the PNG and paint it onto the same canvas the rest of the page
   // treats as the preview/save surface, so Save/Share doesn't need to care
   // which layout produced the pixels.
-  async function renderTimeline(canvas: HTMLCanvasElement, fetchedBooks: Book[], title: string) {
+  async function renderTimeline(canvas: HTMLCanvasElement, fetchedBooks: Book[]) {
     const res = await fetch('/api/export-timeline', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        books: fetchedBooks.map((b) => ({
-          title: b.title,
-          cover_url: b.cover_url,
-          date_read: b.date_read,
-        })),
+        books: fetchedBooks.map((b) => ({ cover_url: b.cover_url, date_read: b.date_read })),
         themeId: timelineThemeId,
-        title,
         connectorStyle,
       }),
     });
@@ -92,7 +87,7 @@ export default function ExportPage() {
       if (!canvas) return;
 
       if (layout === 'timeline') {
-        await renderTimeline(canvas, fetchedBooks, title);
+        await renderTimeline(canvas, fetchedBooks);
       } else {
         const theme = EXPORT_THEMES.find((t) => t.id === themeId)!;
         const count = fetchedBooks.length;
