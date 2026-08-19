@@ -48,6 +48,8 @@ const en = {
     searchFailed: 'Search failed. Try again.',
     noCoverFoundTakePhoto: 'No cover found — take a photo',
     takeAPhoto: 'Take a photo',
+    noCoverPlaceholder: 'No cover — tap to add a photo',
+    takePhotoFor: (title: string) => `Take a photo for "${title}"`,
   },
   camera: {
     cameraError: 'Could not access the camera. Check permissions.',
@@ -220,6 +222,8 @@ const fr: typeof en = {
     searchFailed: 'Échec de la recherche. Réessayez.',
     noCoverFoundTakePhoto: 'Aucune couverture trouvée — prendre une photo',
     takeAPhoto: 'Prendre une photo',
+    noCoverPlaceholder: 'Pas de couverture — touchez pour ajouter une photo',
+    takePhotoFor: (title: string) => `Prendre une photo pour « ${title} »`,
   },
   camera: {
     cameraError: "Impossible d'accéder à la caméra. Vérifiez les autorisations.",

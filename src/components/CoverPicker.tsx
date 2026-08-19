@@ -44,6 +44,11 @@ export default function CoverPicker({
 
   const [flow, setFlow] = useState<Flow>('idle');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [pendingMeta, setPendingMeta] = useState<{
+    title: string;
+    author: string;
+    isbn: string | null;
+  } | null>(null);
 
   async function search(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +72,14 @@ export default function CoverPicker({
   }
 
   function pickCandidate(candidate: CoverCandidate) {
+    if (!candidate.coverUrl) {
+      // No cover image available for this match -- still a real book, so
+      // carry its title/author/isbn forward and have the user photograph
+      // their own copy instead of dropping the match entirely.
+      setPendingMeta({ title: candidate.title, author: candidate.author, isbn: candidate.isbn });
+      setFlow('camera');
+      return;
+    }
     onSelected({
       url: candidate.coverUrl,
       source: 'api',
@@ -77,7 +90,14 @@ export default function CoverPicker({
   }
 
   function onCropConfirmed(dataUrl: string) {
-    onSelected({ url: dataUrl, source: 'self-uploaded' });
+    onSelected({
+      url: dataUrl,
+      source: 'self-uploaded',
+      title: pendingMeta?.title,
+      author: pendingMeta?.author,
+      isbn: pendingMeta?.isbn,
+    });
+    setPendingMeta(null);
   }
 
   return (
@@ -113,15 +133,24 @@ export default function CoverPicker({
                     className="group text-left"
                   >
                     <div className="aspect-[2/3] overflow-hidden rounded-lg border border-ink/10 bg-white">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={candidate.coverUrl}
-                        alt={candidate.title}
-                        className="h-full w-full object-cover transition group-hover:scale-105"
-                        onError={() =>
-                          setBrokenIndices((prev) => new Set(prev).add(i))
-                        }
-                      />
+                      {candidate.coverUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={candidate.coverUrl}
+                          alt={candidate.title}
+                          className="h-full w-full object-cover transition group-hover:scale-105"
+                          onError={() =>
+                            setBrokenIndices((prev) => new Set(prev).add(i))
+                          }
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 border-2 border-dashed border-ink/15 p-2 text-center">
+                          <span className="text-lg">📷</span>
+                          <span className="text-[10px] leading-tight text-ink/50">
+                            {dict.coverPicker.noCoverPlaceholder}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <p className="mt-1 truncate text-xs">{candidate.title}</p>
                   </button>
@@ -144,13 +173,23 @@ export default function CoverPicker({
           </button>
         )}
         {flow === 'camera' && (
-          <CameraCapture
-            onCapture={(dataUrl) => {
-              setCapturedImage(dataUrl);
-              setFlow('crop');
-            }}
-            onCancel={() => setFlow('idle')}
-          />
+          <>
+            {pendingMeta && (
+              <p className="mb-2 text-sm text-ink/60">
+                {dict.coverPicker.takePhotoFor(pendingMeta.title)}
+              </p>
+            )}
+            <CameraCapture
+              onCapture={(dataUrl) => {
+                setCapturedImage(dataUrl);
+                setFlow('crop');
+              }}
+              onCancel={() => {
+                setFlow('idle');
+                setPendingMeta(null);
+              }}
+            />
+          </>
         )}
         {flow === 'crop' && capturedImage && (
           <AutoCropStage

@@ -34,14 +34,12 @@ export default function AddBookPage() {
   function onCoverSelected(result: CoverPickResult) {
     setCoverUrl(result.url);
     setCoverSource(result.source);
-    if (result.source === 'api') {
-      setForm((f) => ({
-        ...f,
-        title: result.title ?? f.title,
-        author: result.author ?? f.author,
-        isbn: result.isbn ?? f.isbn,
-      }));
-    }
+    setForm((f) => ({
+      ...f,
+      title: result.title ?? f.title,
+      author: result.author ?? f.author,
+      isbn: result.isbn ?? f.isbn,
+    }));
   }
 
   async function save() {

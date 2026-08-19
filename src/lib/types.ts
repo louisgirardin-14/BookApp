@@ -19,5 +19,5 @@ export interface CoverCandidate {
   title: string;
   author: string;
   isbn: string | null;
-  coverUrl: string;
+  coverUrl: string | null;
 }
