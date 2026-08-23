@@ -1,21 +1,63 @@
 # Shelf — path to a real product
 
-Working TODO list from the "what's actually still missing" review. Nothing
-in here has been built yet — this is the plan to react to before we start
-implementing. Organized so we can pick an order rather than doing all of it
-at once.
+Working TODO list from the "what's actually still missing" review, updated
+as items ship. Organized so we can pick an order rather than doing all of
+it at once.
 
-## Quick fixes (small, low-risk, can do anytime)
+## Status as of the native-app session
 
-- [ ] **RLS gap on `books` update policy.** The `update own books` policy
-      checks `user_id = auth.uid()` on the row being read, but has no
-      `with check` clause — so in theory a signed-in user could `UPDATE`
-      one of their own books and reassign its `user_id` to someone else's
-      account (silently "gifting" or orphaning a row). Fix is a one-line
-      migration adding `with check (user_id = auth.uid())`. Not exploitable
-      today because nothing in the UI does this, but it's a real gap.
-- [ ] Backfill/clean up the 5 legacy `user_id = null` books (Task #25,
-      still pending — 3 are duplicates of re-added copies, 2 aren't).
+**Shipped:**
+- RLS gap on `books` update policy — fixed (migration `0004`).
+- Admin is role-based (`profiles.role`: owner/admin/member) instead of a
+  hardcoded `OWNER_EMAIL` string check — owner can promote/revoke admin
+  from Settings.
+- Google sign-in is live, invite-gated via a new `invited_emails`
+  allowlist table (migration `0005`), flippable to open registration via
+  a single `OPEN_SIGNUP` env var. Apple sign-in intentionally skipped
+  (Apple Developer Program costs $99/yr; Google is free).
+- CI: GitHub Actions runs lint + typecheck + build on every push
+  (`.github/workflows/ci.yml`), plus the ESLint config the project always
+  expected but never had.
+- Duplicate-book soft warning on Add Book (same title+author already on
+  the shelf — confirm-to-add-anyway, not a hard block).
+- Search no longer silently drops real matches that lack a cover image
+  (foreign/small-press editions) — shows a placeholder tile instead.
+- Basic security response headers (X-Frame-Options, nosniff,
+  Referrer-Policy, Permissions-Policy).
+- **The app is now a real native iOS app** (not just PWA) via Capacitor,
+  running on-device via Xcode (not yet App Store/TestFlight):
+  - `ios/` native project is committed to the repo (was local-only).
+  - Custom app icon + branded splash screen (replacing Capacitor's
+    default blue-swirl placeholder on both).
+  - Fixed the web app rendering under the iOS status bar/notch
+    (`viewport-fit=cover` + safe-area padding) — was unusable, nav links
+    were literally behind the status bar.
+  - Fixed rubber-band/bounce drag feel, added real tap-press feedback,
+    locked pinch-zoom — reads as a native app, not a website in a webview.
+  - Added `NSCameraUsageDescription` — camera capture (cover/spine
+    photos) needs this to work at all inside the WKWebView; likely was
+    silently broken before this.
+  - Status bar set to dark content (was invisible against the cream bg).
+
+**Still open:**
+- [ ] Backfill/clean up the 5 legacy `user_id = null` books (3 are
+      duplicates of re-added copies, 2 aren't) — blocked on Supabase MCP
+      reconnecting, or run manually via the SQL given earlier in-session.
+- [ ] Merge to `main` (still empty/unused — see CI/CD section).
+- [ ] Bottom-tab-bar navigation — proposed, not yet decided/built. Current
+      nav is a website-style top row of text links; a native app would
+      more typically use a bottom tab bar (icons + labels, thumb
+      reachable). Worth revisiting now the app is otherwise native-feeling.
+- [ ] Offline state handling — since the native shell loads the site
+      live over the network (no bundled assets), no connection currently
+      means a blank/broken WebView rather than a friendly message. Native
+      Capacitor/WKWebView-side fix, not yet built.
+- [ ] Keyboard-covers-input check — not yet verified on-device whether
+      the keyboard properly avoids covering form fields (title/author/
+      notes) when typing.
+- [ ] App Store / TestFlight distribution — currently only installable
+      via Xcode + a trusted developer certificate (free, but expires
+      after ~7 days without the paid $99/yr Apple Developer Program).
 
 ## 1. CI/CD & environments
 
@@ -77,38 +119,24 @@ the gap list against that bar:
       real protection is the trademark/brand and the fact your data lives
       in your Supabase project, not theirs.
 
-## 3. Sign-up & onboarding
+## 3. Sign-up & onboarding — Google OAuth done, still invite-gated
 
-Current: invite-only, owner manually creates/resets a password via the
-Admin API, no email ever sent. Deliberately chosen after magic-link email
-kept failing. This is fine at "a few friends" scale and should probably
-**stay** the model until there's a real reason to open signup.
+Email/password invite-only still works (owner sets a password via Admin
+API), and Google sign-in now also works, gated by the same invite
+allowlist. Apple was intentionally skipped (costs $99/yr; revisit if
+Apple sign-in specifically becomes worth it).
 
-If/when self-serve signup is wanted, the realistic open-source-friendly
-options (roughly in order of effort):
+Flipping to fully open public sign-up later is a single env var
+(`OPEN_SIGNUP=true`), not an architecture change — recommendation is still
+to leave it off until there's a real reason to grow past friends, since
+open sign-up brings real moderation/storage/compliance obligations with
+it (see Data retention section).
 
-1. **Supabase Auth + a real transactional email provider** (e.g. Resend —
-   generous free tier, trivial Supabase integration) using **OTP codes**
-   (6-digit code, not a magic link). This avoids the exact failure mode we
-   hit before (magic links break on redirect-URL config and
-   session-from-hash-fragment edge cases); a typed code sidesteps both.
-2. **Auth.js / NextAuth** — fully open-source, self-hosted, more control,
-   but you own more of the plumbing (session storage, email templates)
-   yourself; Supabase-as-database-only becomes an option here too.
-3. **Clerk / Auth0** — turnkey, well-built signup UX out of the box, but
-   it's a third platform to depend on (and pay for past free tier) on top
-   of Supabase + Vercel.
+## 4. Admin side — role column done
 
-Recommendation: stick with invite-only for now; if we open it up, go with
-option 1 — smallest change, reuses everything already built.
-
-## 4. Admin side
-
-Today "admin" = the one `OWNER_EMAIL` account, with an owner-only section
-inside `/settings` (invite, remove accounts). That's proportionate for one
-admin. A fully separate admin site/subdomain would mean running and
-securing a second app for no real gain at this scale — not recommended
-yet. Worth adding instead:
+`profiles.role` (owner/admin/member) replaced the single `OWNER_EMAIL`
+check; the owner can promote/revoke admin rights on other accounts from
+`/settings` without touching env vars or redeploying. Still open:
 
 - [ ] An audit trail (who invited/removed whom, when) — currently these
       actions aren't logged anywhere.
@@ -116,26 +144,23 @@ yet. Worth adding instead:
       surfaced in `/settings` for the owner, so growth is visible before
       it becomes a Supabase free-tier problem.
 
-Revisit "separate admin site" if there's ever more than one admin role.
+## 5. The "app" side (mobile) — native app running, not published yet
 
-## 5. The "app" side (mobile)
+Went with **Capacitor** (option 2 below) over PWA, since the goal was a
+real installable app, not just a home-screen icon — see "Status" above
+for what's shipped. Options for reference:
 
-Three real paths, increasing in cost:
+1. **PWA** (manifest + icons + offline shell) — not pursued; would have
+   been cheaper but doesn't produce an actual App Store-installable app.
+2. **Capacitor** (chosen) — wraps the existing Next.js site in a native
+   shell, reusing ~100% of the web code; the native shell just loads the
+   live Vercel deployment (`server.url` mode) rather than bundling static
+   assets, since this app is fully server-rendered.
+3. **React Native / Expo** native rewrite — not pursued; much bigger
+   lift, only worth it if this becomes a funded, long-term product.
 
-1. **PWA** (add a `manifest.json` + icons + basic offline shell). Makes
-   the existing site installable to a home screen on iOS/Android, looks
-   and feels like an app, zero new backend. Cheapest, and directly
-   answers "we want an app too" without a rebuild.
-2. **Capacitor** wraps the existing Next.js site in a native shell to
-   publish to the App Store/Play Store as a "real" listed app, reusing
-   ~100% of current code.
-3. **React Native / Expo** native rewrite of the UI, sharing the Supabase
-   backend. Biggest lift, but the most native feel (camera/crop flows in
-   particular would feel better than in a mobile browser).
-
-Recommendation: PWA first (cheap, immediate), Capacitor if an app-store
-listing matters later, native rewrite only if this becomes a real product
-with budget for it.
+Next milestone for this track: App Store/TestFlight distribution (needs
+the $99/yr Apple Developer Program, which local Xcode testing doesn't).
 
 ## 6. Monetization
 
@@ -167,12 +192,13 @@ on display ads until there's meaningful traffic.
 
 ---
 
-## Suggested order
+## Suggested next steps (updated)
 
-1. Quick fixes (RLS gap, backfill) — cheap, no new surface area.
-2. CI/CD basics (GitHub Actions build/lint gate) — protects everything
-   built after this point.
-3. PWA — visible progress toward "we have an app," low cost.
-4. Security hardening pass (headers, backups plan).
-5. Revisit sign-up only when ready to grow past friends.
-6. Monetization + compliance once there's real usage to justify it.
+1. Backfill the 5 legacy books — last easy cleanup item outstanding.
+2. Decide on bottom-tab-bar navigation now the app is otherwise
+   native-feeling (currently a website-style top nav).
+3. Offline-state handling + on-device keyboard check — round out the
+   native app before considering App Store/TestFlight.
+4. Merge to `main` at some point (still empty).
+5. Revisit sign-up (open registration) / monetization / compliance only
+   once there's real usage beyond friends to justify it.
