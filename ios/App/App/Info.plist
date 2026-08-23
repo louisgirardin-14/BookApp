@@ -65,6 +65,10 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<true/>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDarkContent</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Shelf uses your camera to photograph book covers and spines.</string>
 </dict>
 </plist>
