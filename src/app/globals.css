@@ -5,4 +5,38 @@
 html,
 body {
   background-color: #f6f1e7;
+  /* Kills the rubber-band drag-left-right/up-down bounce that reads as
+     "a website in a webview" rather than a native app -- there's no
+     horizontal content to pan to anyway, this was just the browser
+     elastic-scroll gesture responding to any sideways touch drag. */
+  overscroll-behavior: none;
+}
+
+/* Native apps don't flash a grey tap highlight or pop up a text-selection
+   callout on every touch -- only actual inputs need selection/callout. */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Replaces the tap-highlight flash we just disabled with a real "pressed"
+   feel -- :active needs an onTouchStart listener somewhere up the tree to
+   fire at all in WebKit (see the body tag in layout.tsx). */
+a,
+button {
+  transition: opacity 0.1s ease;
+}
+a:active,
+button:active:not(:disabled) {
+  opacity: 0.6;
 }

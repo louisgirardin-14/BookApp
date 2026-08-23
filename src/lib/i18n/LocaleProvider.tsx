@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { dictionaries, type Locale } from './dictionary';
 import { LOCALE_COOKIE } from './constants';
@@ -22,6 +22,15 @@ export function LocaleProvider({
 }) {
   const router = useRouter();
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
+
+  // WebKit only evaluates :active styles on tap if something in the tree
+  // listens for touch events -- otherwise taps skip straight to click
+  // with no pressed state at all. A no-op listener is enough to turn it on.
+  useEffect(() => {
+    const noop = () => {};
+    document.addEventListener('touchstart', noop, { passive: true });
+    return () => document.removeEventListener('touchstart', noop);
+  }, []);
 
   const setLocale = useCallback(
     (next: Locale) => {
