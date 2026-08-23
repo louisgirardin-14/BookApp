@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getDictionary } from '@/lib/i18n/getLocale';
+import { canManageAccounts, getRole } from '@/lib/authz';
 import { signOutAction } from './actions';
 import VisibilityToggle from './VisibilityToggle';
 import InviteFriendForm from './InviteFriendForm';
@@ -23,13 +24,15 @@ export default async function SettingsPage() {
     .eq('id', user.id)
     .single();
 
-  const isOwner = user.email === process.env.OWNER_EMAIL;
+  const role = await getRole(user.id);
+  const isOwner = role === 'owner';
+  const isAdmin = canManageAccounts(role);
 
-  let otherAccounts: { id: string; email: string | null }[] = [];
-  if (isOwner) {
+  let otherAccounts: { id: string; email: string | null; role: string }[] = [];
+  if (isAdmin) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email')
+      .select('id, email, role')
       .neq('id', user.id)
       .order('email', { ascending: true });
     otherAccounts = data ?? [];
@@ -64,7 +67,7 @@ export default async function SettingsPage() {
         <VisibilityToggle initialIsPublic={profile?.is_public ?? false} />
       </section>
 
-      {isOwner && (
+      {isAdmin && (
         <section className="space-y-2 border-t border-ink/10 pt-6">
           <h2 className="text-sm font-medium">{dict.settings.inviteAFriend}</h2>
           <p className="text-sm text-ink/60">{dict.settings.inviteDescription}</p>
@@ -72,11 +75,11 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {isOwner && (
+      {isAdmin && (
         <section className="space-y-2 border-t border-ink/10 pt-6">
           <h2 className="text-sm font-medium">{dict.settings.manageAccounts}</h2>
           <p className="text-sm text-ink/60">{dict.settings.manageAccountsDescription}</p>
-          <ManageAccountsSection accounts={otherAccounts} />
+          <ManageAccountsSection accounts={otherAccounts} canManageRoles={isOwner} />
         </section>
       )}
 

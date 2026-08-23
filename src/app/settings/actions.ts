@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { canManageAccounts, getRole, type Role } from '@/lib/authz';
 
 export async function updateVisibility(isPublic: boolean) {
   const supabase = createClient();
@@ -37,8 +38,8 @@ export async function inviteFriend(email: string): Promise<{ email: string; pass
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || user.email !== process.env.OWNER_EMAIL) {
-    throw new Error('Only the owner can invite people.');
+  if (!user || !canManageAccounts(await getRole(user.id))) {
+    throw new Error('Only an owner or admin can invite people.');
   }
 
   const trimmedEmail = email.trim();
@@ -123,13 +124,36 @@ export async function removeUserAccount(targetUserId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || user.email !== process.env.OWNER_EMAIL) {
-    throw new Error('Only the owner can remove accounts.');
+  if (!user || !canManageAccounts(await getRole(user.id))) {
+    throw new Error('Only an owner or admin can remove accounts.');
   }
   if (targetUserId === user.id) {
     throw new Error('Use "Delete my account" for your own account.');
   }
 
   await purgeAccount(targetUserId);
+  revalidatePath('/settings');
+}
+
+// Owner-only: grants or revokes admin rights on another account. Only the
+// owner role can do this -- admins can manage accounts day-to-day, but
+// can't create more admins (avoids an admin quietly escalating peers).
+export async function setAccountRole(targetUserId: string, role: Role) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || (await getRole(user.id)) !== 'owner') {
+    throw new Error('Only the owner can change account roles.');
+  }
+  if (targetUserId === user.id) {
+    throw new Error("You can't change your own role.");
+  }
+  if (role === 'owner') {
+    throw new Error('Ownership cannot be granted this way.');
+  }
+
+  const { error } = await supabaseAdmin.from('profiles').update({ role }).eq('id', targetUserId);
+  if (error) throw new Error(error.message);
   revalidatePath('/settings');
 }

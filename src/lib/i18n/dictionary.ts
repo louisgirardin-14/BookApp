@@ -153,6 +153,10 @@ const en = {
     removing: 'Removing...',
     removeConfirm: (email: string) => `Permanently delete ${email}, their books, and photos?`,
     failedToRemoveAccount: 'Failed to remove account.',
+    roleAdmin: 'Admin',
+    makeAdmin: 'Make admin',
+    revokeAdmin: 'Revoke admin',
+    failedToChangeRole: 'Failed to change role.',
     dangerZone: 'Danger zone',
     deleteAccountDescription:
       'Permanently deletes your account, books, and photos. This cannot be undone.',
@@ -327,6 +331,10 @@ const fr: typeof en = {
     removing: 'Suppression...',
     removeConfirm: (email: string) => `Supprimer définitivement ${email}, ses livres et ses photos ?`,
     failedToRemoveAccount: 'Échec de la suppression du compte.',
+    roleAdmin: 'Admin',
+    makeAdmin: 'Nommer admin',
+    revokeAdmin: 'Révoquer admin',
+    failedToChangeRole: 'Échec du changement de rôle.',
     dangerZone: 'Zone dangereuse',
     deleteAccountDescription:
       'Supprime définitivement votre compte, vos livres et vos photos. Cette action est irréversible.',
