@@ -28,3 +28,15 @@ textarea,
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Replaces the tap-highlight flash we just disabled with a real "pressed"
+   feel -- :active needs an onTouchStart listener somewhere up the tree to
+   fire at all in WebKit (see the body tag in layout.tsx). */
+a,
+button {
+  transition: opacity 0.1s ease;
+}
+a:active,
+button:active:not(:disabled) {
+  opacity: 0.6;
+}
