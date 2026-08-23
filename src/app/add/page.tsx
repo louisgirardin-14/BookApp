@@ -6,7 +6,7 @@ import type { CoverSource } from '@/lib/types';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import StarRating from '@/components/StarRating';
 import CoverPicker, { type CoverPickResult } from '@/components/CoverPicker';
-import { addBook, mirrorCoverImage, uploadCoverImage } from '@/app/actions';
+import { addBook, findDuplicateBook, mirrorCoverImage, uploadCoverImage } from '@/app/actions';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -48,6 +48,12 @@ export default function AddBookPage() {
       setSaveError(dict.addBook.titleAuthorRequired);
       return;
     }
+    const duplicate = await findDuplicateBook(form.title, form.author);
+    if (duplicate) {
+      const confirmed = confirm(dict.addBook.duplicateConfirm(form.title, duplicate.date_read));
+      if (!confirmed) return;
+    }
+
     setSaving(true);
     setSaveError(null);
     try {

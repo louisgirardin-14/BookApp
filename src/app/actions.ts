@@ -26,6 +26,26 @@ async function requireUser() {
   return { supabase, user };
 }
 
+// Soft duplicate check -- same title+author already on this shelf. Not a
+// hard block (re-reading a book and logging it again is a legitimate
+// thing to do), just something the Add Book page warns about before
+// saving so a book doesn't get added twice by accident.
+export async function findDuplicateBook(
+  title: string,
+  author: string
+): Promise<{ id: string; date_read: string } | null> {
+  const { supabase, user } = await requireUser();
+  const { data } = await supabase
+    .from('books')
+    .select('id, date_read')
+    .eq('user_id', user.id)
+    .ilike('title', title.trim())
+    .ilike('author', author.trim())
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function addBook(input: BookInput) {
   const { supabase, user } = await requireUser();
   const { data, error } = await supabase

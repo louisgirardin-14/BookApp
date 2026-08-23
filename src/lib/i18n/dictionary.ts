@@ -38,6 +38,8 @@ const en = {
     ratingLabel: 'Rating (optional)',
     notesLabel: 'Notes (optional)',
     titleAuthorRequired: 'Title and author are required.',
+    duplicateConfirm: (title: string, dateRead: string) =>
+      `"${title}" is already on your shelf (read on ${dateRead}). Add it again?`,
     failedToSave: 'Failed to save.',
     saving: 'Saving...',
     saveToShelf: 'Save to shelf',
@@ -219,6 +221,8 @@ const fr: typeof en = {
     ratingLabel: 'Note (optionnel)',
     notesLabel: 'Notes (optionnel)',
     titleAuthorRequired: "Le titre et l'auteur sont requis.",
+    duplicateConfirm: (title: string, dateRead: string) =>
+      `« ${title} » est déjà sur votre étagère (lu le ${dateRead}). L'ajouter quand même ?`,
     failedToSave: "Échec de l'enregistrement.",
     saving: 'Enregistrement...',
     saveToShelf: "Enregistrer sur l'étagère",
