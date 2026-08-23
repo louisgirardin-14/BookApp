@@ -1,6 +1,7 @@
 import { getDictionary } from '@/lib/i18n/getLocale';
 import { signIn } from './actions';
 import ClaimOwnerForm from './ClaimOwnerForm';
+import OAuthButtons from '@/components/OAuthButtons';
 
 export default function LoginPage({
   searchParams,
@@ -43,6 +44,13 @@ export default function LoginPage({
             {dict.login.signIn}
           </button>
         </form>
+
+        <div className="my-4 flex items-center gap-3 text-xs text-ink/40">
+          <div className="h-px flex-1 bg-ink/10" />
+          {dict.login.or}
+          <div className="h-px flex-1 bg-ink/10" />
+        </div>
+        <OAuthButtons next={next} />
 
         <ClaimOwnerForm next={next} initiallyOpen={searchParams.claim === '1'} />
       </div>

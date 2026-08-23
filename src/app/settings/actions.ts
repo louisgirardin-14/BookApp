@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { canManageAccounts, getRole, type Role } from '@/lib/authz';
+import { addToInviteAllowlist, canManageAccounts, getRole, type Role } from '@/lib/authz';
 
 export async function updateVisibility(isPublic: boolean) {
   const supabase = createClient();
@@ -44,6 +44,10 @@ export async function inviteFriend(email: string): Promise<{ email: string; pass
 
   const trimmedEmail = email.trim();
   const password = randomPassword();
+
+  // Also allowlists this email for Google/Apple sign-in, so the invited
+  // friend can use whichever method they prefer.
+  await addToInviteAllowlist(trimmedEmail, user.id);
 
   const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
   if (listError) throw new Error(listError.message);

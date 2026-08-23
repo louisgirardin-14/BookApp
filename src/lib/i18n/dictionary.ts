@@ -19,6 +19,9 @@ const en = {
     newPassword: 'New password',
     confirmPassword: 'Confirm password',
     setPasswordAndSignIn: 'Set password & sign in',
+    or: 'or',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
   },
   shelf: {
     emptyTitle: 'Your shelf is empty.',
@@ -197,6 +200,9 @@ const fr: typeof en = {
     newPassword: 'Nouveau mot de passe',
     confirmPassword: 'Confirmer le mot de passe',
     setPasswordAndSignIn: 'Définir le mot de passe et se connecter',
+    or: 'ou',
+    continueWithGoogle: 'Continuer avec Google',
+    continueWithApple: 'Continuer avec Apple',
   },
   shelf: {
     emptyTitle: 'Votre étagère est vide.',
